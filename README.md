@@ -48,7 +48,7 @@ Designed as a **modular monolith** – perfect for a portfolio that demonstrates
 ## 📁 Project Structure (Modular Monolith)
 
 ```
-AestheticClinicAPI/
+Aesthetic-Clinic-Management/
 ├── Controllers/            # API endpoints (grouped by module)
 ├── Modules/
 │   ├── Clients/            # Client module
@@ -85,8 +85,8 @@ AestheticClinicAPI/
 
 1. **Clone the repository**
    ```bash
-   git clone https://github.com/yourusername/AestheticClinicAPI.git
-   cd AestheticClinicAPI
+   git clone https://github.com/CyberArcenal/Aesthetic-Clinic-Management.git
+   cd Aesthetic-Clinic-Management
    ```
 
 2. **Restore dependencies**
@@ -187,9 +187,9 @@ This project is licensed under the **GNU General Public License v3.0** – see t
 
 ## 📬 Contact
 
-Your Name – [@yourtwitter](https://twitter.com/yourtwitter) – email@example.com
+Your Name – [@Third1Dz](https://twitter.com/Third1Dz) – cyberarcenal1@gmail.com
 
-Project Link: [https://github.com/yourusername/AestheticClinicAPI](https://github.com/yourusername/AestheticClinicAPI)
+Project Link: [https://github.com/CyberArcenal/Aesthetic-Clinic-Management](https://github.com/CyberArcenal/Aesthetic-Clinic-Management)
 
 ---
 
