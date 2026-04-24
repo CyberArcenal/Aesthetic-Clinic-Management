@@ -187,7 +187,7 @@ This project is licensed under the **GNU General Public License v3.0** – see t
 
 ## 📬 Contact
 
-Your Name – [@Third1Dz](https://twitter.com/Third1Dz) – cyberarcenal1@gmail.com
+CyberArcenal – [@Third1Dz](https://twitter.com/Third1Dz) – cyberarcenal1@gmail.com
 
 Project Link: [https://github.com/CyberArcenal/Aesthetic-Clinic-Management](https://github.com/CyberArcenal/Aesthetic-Clinic-Management)
 
