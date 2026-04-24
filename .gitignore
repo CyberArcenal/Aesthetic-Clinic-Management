@@ -1,0 +1,115 @@
+# ==================
+# .NET / ASP.NET Core
+# ==================
+
+# Build output
+/bin/
+/obj/
+/out/
+/publish/
+
+# User-specific files
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+# Rider / Visual Studio Code
+.idea/
+.vs/
+.vscode/
+
+# Package Manager cache
+packages/
+*.nupkg
+*.snupkg
+
+# Migration bundle (if any)
+*.migrationbundle
+
+# ==================
+# Database files (SQLite)
+# ==================
+*.db
+*.db-shm
+*.db-wal
+*.sqlite
+*.sqlite3
+
+# ==================
+# Logs
+# ==================
+/logs/
+*.log
+*.logs
+*.txt (kung may logs na .txt)
+
+# ==================
+# Configuration - sensitive / environment-specific
+# ==================
+appsettings.*.json
+!appsettings.Development.json   # Keep development config (optional)
+!appsettings.Production.json    # Keep production config if needed
+*.secrets.json
+secrets.json
+
+# User Secrets (development)
+/Properties/launchSettings.json (kung may sensitive info, pero karaniwang hindi)
+
+# ==================
+# Test results
+# ==================
+/TestResults/
+*.trx
+*.coverage
+*.coveragexml
+
+# ==================
+# Generated documentation
+# ==================
+/apidoc/
+/doc/
+
+# ==================
+# Package dependencies
+# ==================
+/project.lock.json
+/project.fragment.lock.json
+/package-lock.json   # kung may npm packages sa project (e.g., for Tooling)
+/node_modules/       # kung may npm
+
+# ==================
+# Coverage
+# ==================
+*.coverlet.*
+.coverage
+
+# ==================
+# Temporary files
+# ==================
+*.tmp
+*.temp
+*.~*
+
+# ==================
+# OS generated files
+# ==================
+Thumbs.db
+.DS_Store
+Desktop.ini
+
+# ==================
+# Data files
+# ==================
+*.mdf
+*.ldf
+
+# ==================
+# Other
+# ==================
+*.pfx               # certificates
+*.p12
+*.snk
+*.ps1              # kung may automation scripts na ayaw mo i-share
+TODO
+*.txt
