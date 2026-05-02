@@ -13,6 +13,7 @@ using AestheticClinicAPI.Modules.Clients.Services;
 using AestheticClinicAPI.Modules.Clients.Models;
 using System.Linq.Expressions;
 using AestheticClinicAPI.Modules.Treatments.DTOs;
+using Microsoft.Extensions.Logging;
 
 namespace AestheticClinicAPI.Tests.UnitTests.Appointments;
 
@@ -29,7 +30,10 @@ public class AppointmentServiceTests
         _appointmentRepoMock = new Mock<IAppointmentRepository>();
         _treatmentServiceMock = new Mock<ITreatmentService>();
         _clientServiceMock = new Mock<IClientService>();
-        _stateTransitionMock = new Mock<AppointmentStateTransition>();
+        _stateTransitionMock = new Mock<AppointmentStateTransition>(
+    MockBehavior.Default,
+    new object[] { new Mock<ILogger<AppointmentStateTransition>>().Object }
+);
         _appointmentService = new AppointmentService(
             _appointmentRepoMock.Object,
             _treatmentServiceMock.Object,

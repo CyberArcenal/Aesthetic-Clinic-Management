@@ -36,7 +36,7 @@ public class AppointmentStateTransition : IStateTransitionService<Appointment>
         return Task.CompletedTask;
     }
 
-    public Task OnStatusChangedAsync(Appointment appointment, string oldStatus, string newStatus, CancellationToken ct = default)
+    public virtual Task OnStatusChangedAsync(Appointment appointment, string oldStatus, string newStatus, CancellationToken ct = default)
     {
         _logger.LogInformation("[APPOINTMENT] OnStatusChangedAsync: Appointment {Id} status from '{Old}' → '{New}'",
             appointment.Id, oldStatus, newStatus);

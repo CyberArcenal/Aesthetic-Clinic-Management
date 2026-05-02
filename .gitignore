@@ -113,3 +113,5 @@ Desktop.ini
 *.ps1              # kung may automation scripts na ayaw mo i-share
 TODO
 *.txt
+/AestheticClinicAPI/obj/Debug
+/AestheticClinicAPI.Tests/bin

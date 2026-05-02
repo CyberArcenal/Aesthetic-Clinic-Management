@@ -39,6 +39,24 @@ public class AuthServiceTests
             _roleRepoMock.Object,
             _refreshTokenRepoMock.Object,
             _configMock.Object);
+
+        var jwtSettingsMock = new Mock<IConfigurationSection>();
+        jwtSettingsMock.Setup(x => x["Key"]).Returns("test-key-that-is-at-least-32-characters-long");
+        jwtSettingsMock.Setup(x => x["Issuer"]).Returns("TestIssuer");
+        jwtSettingsMock.Setup(x => x["Audience"]).Returns("TestAudience");
+        jwtSettingsMock.Setup(x => x["ExpiryMinutes"]).Returns("60");
+
+        _configMock.Setup(c => c.GetSection("Jwt")).Returns(jwtSettingsMock.Object);
+        _configMock.Setup(c => c["Jwt:Key"]).Returns("test-key-that-is-at-least-32-characters-long");
+        _configMock.Setup(c => c["Jwt:Issuer"]).Returns("TestIssuer");
+        _configMock.Setup(c => c["Jwt:Audience"]).Returns("TestAudience");
+        _configMock.Setup(c => c["Jwt:ExpiryMinutes"]).Returns("60");
+
+        // Also ensure these top-level indexers work for direct access
+        _configMock.Setup(c => c["Jwt:Key"]).Returns("test-key-that-is-at-least-32-characters-long");
+        _configMock.Setup(c => c["Jwt:Issuer"]).Returns("TestIssuer");
+        _configMock.Setup(c => c["Jwt:Audience"]).Returns("TestAudience");
+        _configMock.Setup(c => c["Jwt:ExpiryMinutes"]).Returns("60");
     }
 
     #region RegisterAsync Tests
@@ -332,7 +350,7 @@ public class AuthServiceTests
         var user = new User
         {
             Id = userId,
-            PasswordHash =BCrypt.Net.BCrypt.HashPassword(currentPassword)
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(currentPassword)
         };
         _userRepoMock.Setup(r => r.GetByIdAsync(userId)).ReturnsAsync(user);
         _userRepoMock.Setup(r => r.UpdateAsync(It.IsAny<User>())).Returns(Task.CompletedTask);
