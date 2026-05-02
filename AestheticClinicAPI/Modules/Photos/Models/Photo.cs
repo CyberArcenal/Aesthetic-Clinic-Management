@@ -1,4 +1,4 @@
-using AestheticClinicAPI.Modules.Shared;
+using AestheticClinicAPI.Shared;
 using System.ComponentModel.DataAnnotations;
 
 namespace AestheticClinicAPI.Modules.Photos.Models

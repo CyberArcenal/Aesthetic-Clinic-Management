@@ -1,5 +1,5 @@
 using AestheticClinicAPI.Modules.Clients.Models;
-using AestheticClinicAPI.Modules.Shared;
+using AestheticClinicAPI.Shared;
 
 namespace AestheticClinicAPI.Modules.Clients.Services
 {

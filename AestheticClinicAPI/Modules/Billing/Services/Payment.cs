@@ -1,4 +1,4 @@
-using AestheticClinicAPI.Modules.Shared;
+using AestheticClinicAPI.Shared;
 using AestheticClinicAPI.Modules.Billing.DTOs;
 using AestheticClinicAPI.Modules.Billing.Models;
 using AestheticClinicAPI.Modules.Billing.Repositories;

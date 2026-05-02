@@ -2,7 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using System.Linq.Expressions;
 using AestheticClinicAPI.Data;
 
-namespace AestheticClinicAPI.Modules.Shared
+namespace AestheticClinicAPI.Shared
 {
     public class Repository<T> : IRepository<T> where T : BaseEntity
     {

@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using AestheticClinicAPI.Modules.Shared;
+using AestheticClinicAPI.Shared;
 using AestheticClinicAPI.Modules.Staff.DTOs;
 using AestheticClinicAPI.Modules.Staff.Services;
 

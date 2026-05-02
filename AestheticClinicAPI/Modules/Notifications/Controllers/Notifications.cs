@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using AestheticClinicAPI.Modules.Shared;
+using AestheticClinicAPI.Shared;
 using AestheticClinicAPI.Modules.Notifications.DTOs;
 using AestheticClinicAPI.Modules.Notifications.Services;
 

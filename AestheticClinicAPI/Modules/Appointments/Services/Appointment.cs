@@ -1,4 +1,4 @@
-using AestheticClinicAPI.Modules.Shared;
+using AestheticClinicAPI.Shared;
 using AestheticClinicAPI.Modules.Appointments.DTOs;
 using AestheticClinicAPI.Modules.Appointments.Models;
 using AestheticClinicAPI.Modules.Appointments.Repositories;
@@ -121,7 +121,7 @@ namespace AestheticClinicAPI.Modules.Appointments.Services
             appointment.Status = newStatus;
             await _appointmentRepo.UpdateAsync(appointment);
 
-            await _stateTransition.HandleStatusChange(id, oldStatus, newStatus);
+            await _stateTransition.OnStatusChangedAsync(appointment, oldStatus, newStatus);
             return ServiceResult<bool>.Success(true);
         }
 

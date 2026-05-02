@@ -1,36 +1,67 @@
-using AestheticClinicAPI.Modules.Appointments.Constants;
-using AestheticClinicAPI.Modules.Appointments.Subscribers;
+using AestheticClinicAPI.Modules.Appointments.Models;
+using AestheticClinicAPI.Shared;
 
-namespace AestheticClinicAPI.Modules.Appointments.StateTransitionService
+namespace AestheticClinicAPI.Modules.Appointments.StateTransitionService;
+
+public class AppointmentStateTransition : IStateTransitionService<Appointment>
 {
-    public class AppointmentStateTransition
+    private readonly ILogger<AppointmentStateTransition> _logger;
+
+    public AppointmentStateTransition(ILogger<AppointmentStateTransition> logger)
     {
-        private readonly AppointmentSubscriber _subscriber;
+        _logger = logger;
+    }
 
-        public AppointmentStateTransition(AppointmentSubscriber subscriber)
-        {
-            _subscriber = subscriber;
-        }
+    public Task OnCreatedAsync(Appointment appointment, CancellationToken ct = default)
+    {
+        _logger.LogInformation("[APPOINTMENT] OnCreatedAsync called for Appointment ID: {Id}, ClientId: {ClientId}",
+            appointment.Id, appointment.ClientId);
+        // TODO: magpadala ng confirmation email/SMS, mag-create ng invoice, atbp.
+        return Task.CompletedTask;
+    }
 
-        public async Task HandleStatusChange(int appointmentId, string oldStatus, string newStatus)
+    public Task OnUpdatedAsync(Appointment appointment, Appointment? originalEntity, CancellationToken ct = default)
+    {
+        _logger.LogInformation("[APPOINTMENT] OnUpdatedAsync called for Appointment ID: {Id}", appointment.Id);
+        if (originalEntity != null)
         {
-            // Only trigger on certain status changes
-            if (newStatus == AppointmentStatus.Confirmed && oldStatus != AppointmentStatus.Confirmed)
+            // Halimbawa: kung nagbago ang appointment date/time
+            if (originalEntity.AppointmentDateTime != appointment.AppointmentDateTime)
             {
-                await _subscriber.OnConfirmed(appointmentId);
-            }
-            else if (newStatus == AppointmentStatus.Completed && oldStatus != AppointmentStatus.Completed)
-            {
-                await _subscriber.OnCompleted(appointmentId);
-            }
-            else if (newStatus == AppointmentStatus.Cancelled && oldStatus != AppointmentStatus.Cancelled)
-            {
-                await _subscriber.OnCancelled(appointmentId);
-            }
-            else if (newStatus == AppointmentStatus.NoShow && oldStatus != AppointmentStatus.NoShow)
-            {
-                await _subscriber.OnNoShow(appointmentId);
+                _logger.LogInformation("   → Appointment datetime changed from {Old} to {New}",
+                    originalEntity.AppointmentDateTime, appointment.AppointmentDateTime);
+                // TODO: magpadala ng reschedule notification
             }
         }
+        return Task.CompletedTask;
+    }
+
+    public Task OnStatusChangedAsync(Appointment appointment, string oldStatus, string newStatus, CancellationToken ct = default)
+    {
+        _logger.LogInformation("[APPOINTMENT] OnStatusChangedAsync: Appointment {Id} status from '{Old}' → '{New}'",
+            appointment.Id, oldStatus, newStatus);
+
+        // Placeholder para sa iba't ibang status transitions
+        switch (newStatus)
+        {
+            case "Confirmed":
+                // TODO: i-send ang confirmation
+                break;
+            case "Cancelled":
+                // TODO: mag-email sa client, free up staff schedule
+                break;
+            case "Completed":
+                // TODO: i-generate ang invoice, magpadala ng feedback request
+                break;
+            case "NoShow":
+                // TODO: mag-charge ng no-show fee kung applicable
+                break;
+        }
+        return Task.CompletedTask;
+    }
+
+    public Task OnActiveChangedAsync(Appointment entity, bool oldActive, bool newActive, CancellationToken ct = default)
+    {
+        throw new NotImplementedException();
     }
 }

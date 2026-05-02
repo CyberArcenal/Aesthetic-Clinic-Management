@@ -1,6 +1,6 @@
 using System.Linq.Expressions;
 
-namespace AestheticClinicAPI.Modules.Shared
+namespace AestheticClinicAPI.Shared
 {
     public interface IRepository<T> where T : BaseEntity
     {

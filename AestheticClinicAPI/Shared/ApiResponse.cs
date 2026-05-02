@@ -1,4 +1,4 @@
-namespace AestheticClinicAPI.Modules.Shared
+namespace AestheticClinicAPI.Shared
 {
     public class ApiResponse<T>
     {

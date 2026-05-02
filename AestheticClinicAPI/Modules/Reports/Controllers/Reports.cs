@@ -1,7 +1,8 @@
 using Microsoft.AspNetCore.Mvc;
-using AestheticClinicAPI.Modules.Shared;
+using AestheticClinicAPI.Shared;
 using AestheticClinicAPI.Modules.Reports.DTOs;
 using AestheticClinicAPI.Modules.Reports.Services;
+using Microsoft.AspNetCore.Authorization;
 
 namespace AestheticClinicAPI.Modules.Reports.Controllers
 {
@@ -52,6 +53,21 @@ namespace AestheticClinicAPI.Modules.Reports.Controllers
             var result = await _reportLogService.DeleteAsync(id);
             if (!result.IsSuccess) return NotFound(ApiResponse<bool>.Fail(result.ErrorMessage!));
             return Ok(ApiResponse<bool>.Ok(true, "Report deleted."));
+        }
+        [Authorize(Roles = "Admin")]
+        [HttpPost("trigger-weekly-report")]
+        public async Task<IActionResult> TriggerWeeklyReport()
+        {
+            using var scope = HttpContext.RequestServices.CreateScope();
+            var aiService = scope.ServiceProvider.GetRequiredService<IAIReportingService>();
+            var report = await aiService.GenerateWeeklyReportAsync();
+
+            var response = new TriggerWeeklyReportResponseDto
+            {
+                Id = report.Id,
+                GeneratedAt = report.GeneratedAt
+            };
+            return Ok(ApiResponse<TriggerWeeklyReportResponseDto>.Ok(response));
         }
     }
 }

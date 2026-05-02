@@ -1,4 +1,4 @@
-using AestheticClinicAPI.Modules.Shared;
+using AestheticClinicAPI.Shared;
 using AestheticClinicAPI.Modules.Authentications.Models;
 using AestheticClinicAPI.Modules.Authentications.Repositories;
 

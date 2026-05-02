@@ -1,4 +1,4 @@
-using AestheticClinicAPI.Modules.Shared;
+using AestheticClinicAPI.Shared;
 using AestheticClinicAPI.Modules.Photos.DTOs;
 using AestheticClinicAPI.Modules.Photos.Models;
 using AestheticClinicAPI.Modules.Photos.Repositories;
@@ -10,11 +10,13 @@ namespace AestheticClinicAPI.Modules.Photos.Services
     {
         private readonly IPhotoRepository _photoRepo;
         private readonly IClientService _clientService;
+        private readonly IWebHostEnvironment _env;
 
-        public PhotoService(IPhotoRepository photoRepo, IClientService clientService)
+        public PhotoService(IPhotoRepository photoRepo, IClientService clientService, IWebHostEnvironment env)
         {
             _photoRepo = photoRepo;
             _clientService = clientService;
+            _env = env;
         }
 
         private async Task<PhotoResponseDto> MapToDto(Photo photo)
@@ -86,19 +88,61 @@ namespace AestheticClinicAPI.Modules.Photos.Services
 
         public async Task<ServiceResult<PhotoResponseDto>> CreateAsync(CreatePhotoDto dto)
         {
+            // Validate client
+            var clientCheck = await _clientService.GetByIdAsync(dto.ClientId);
+            if (!clientCheck.IsSuccess)
+                return ServiceResult<PhotoResponseDto>.Failure("Client not found.");
+
+            // 1. Save file to disk
+            var uploadsFolder = Path.Combine(_env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), "uploads", "photos");
+            if (!Directory.Exists(uploadsFolder))
+                Directory.CreateDirectory(uploadsFolder);
+
+            var originalFileName = Path.GetFileName(dto.File.FileName);
+            var fileExtension = Path.GetExtension(originalFileName);
+            var uniqueFileName = $"{Guid.NewGuid()}{fileExtension}";
+            var physicalPath = Path.Combine(uploadsFolder, uniqueFileName);
+
+            using (var stream = new FileStream(physicalPath, FileMode.Create))
+            {
+                await dto.File.CopyToAsync(stream);
+            }
+
+            // 2. Create entity
             var photo = new Photo
             {
                 ClientId = dto.ClientId,
                 AppointmentId = dto.AppointmentId,
-                FileName = dto.FileName,
-                FilePath = dto.FilePath,
-                Description = dto.Description,
                 IsBefore = dto.IsBefore,
-                FileSize = dto.FileSize,
-                MimeType = dto.MimeType
+                Description = dto.Description,
+                FileName = originalFileName,
+                FilePath = $"/uploads/photos/{uniqueFileName}", // relative URL
+                FileSize = dto.File.Length,
+                MimeType = dto.File.ContentType
             };
+
             var created = await _photoRepo.AddAsync(photo);
             return ServiceResult<PhotoResponseDto>.Success(await MapToDto(created));
+        }
+
+        public async Task<ServiceResult<PhotoFileDto>> GetPhotoFileAsync(int id)
+        {
+            var photo = await _photoRepo.GetByIdAsync(id);
+            if (photo == null)
+                return ServiceResult<PhotoFileDto>.Failure("Photo not found.");
+
+            var wwwroot = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+            var physicalPath = Path.Combine(wwwroot, photo.FilePath.TrimStart('/'));
+            if (!System.IO.File.Exists(physicalPath))
+                return ServiceResult<PhotoFileDto>.Failure("File not found on disk.");
+
+            var fileBytes = await System.IO.File.ReadAllBytesAsync(physicalPath);
+            return ServiceResult<PhotoFileDto>.Success(new PhotoFileDto
+            {
+                FileBytes = fileBytes,
+                MimeType = photo.MimeType ?? "application/octet-stream",
+                FileName = photo.FileName
+            });
         }
 
         public async Task<ServiceResult<bool>> DeleteAsync(int id)
@@ -106,9 +150,16 @@ namespace AestheticClinicAPI.Modules.Photos.Services
             var photo = await _photoRepo.GetByIdAsync(id);
             if (photo == null)
                 return ServiceResult<bool>.Failure("Photo not found.");
+
+            // Delete physical file
+            var wwwroot = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+            var physicalPath = Path.Combine(wwwroot, photo.FilePath.TrimStart('/'));
+            if (System.IO.File.Exists(physicalPath))
+                System.IO.File.Delete(physicalPath);
+
             await _photoRepo.DeleteAsync(photo);
             return ServiceResult<bool>.Success(true);
         }
-        
+
     }
 }

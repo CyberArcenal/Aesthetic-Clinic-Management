@@ -1,5 +1,5 @@
 using System.ComponentModel.DataAnnotations;
-using AestheticClinicAPI.Modules.Shared;
+using AestheticClinicAPI.Shared;
 
 namespace AestheticClinicAPI.Modules.Clients.Models
 {

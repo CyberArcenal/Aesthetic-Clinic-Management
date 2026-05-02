@@ -1,5 +1,5 @@
 using System.Linq.Expressions;
-using AestheticClinicAPI.Modules.Shared;
+using AestheticClinicAPI.Shared;
 using AestheticClinicAPI.Modules.Staff.DTOs;
 using AestheticClinicAPI.Modules.Staff.Models;
 using AestheticClinicAPI.Modules.Staff.Repositories;

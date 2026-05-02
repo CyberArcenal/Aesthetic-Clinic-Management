@@ -1,4 +1,4 @@
-using AestheticClinicAPI.Modules.Shared;
+using AestheticClinicAPI.Shared;
 using System.ComponentModel.DataAnnotations;
 using AestheticClinicAPI.Modules.Clients.Models;
 using AestheticClinicAPI.Modules.Treatments.Models;

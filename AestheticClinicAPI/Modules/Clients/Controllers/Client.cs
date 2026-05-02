@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using AestheticClinicAPI.Modules.Clients.Models;
 using AestheticClinicAPI.Modules.Clients.Services;
-using AestheticClinicAPI.Modules.Shared;
+using AestheticClinicAPI.Shared;
 
 namespace AestheticClinicAPI.Modules.Clients.Controllers
 {

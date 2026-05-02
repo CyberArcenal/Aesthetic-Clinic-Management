@@ -1,4 +1,4 @@
-using AestheticClinicAPI.Modules.Shared;
+using AestheticClinicAPI.Shared;
 using AestheticClinicAPI.Modules.Staff.Models;
 
 namespace AestheticClinicAPI.Modules.Staff.Repositories

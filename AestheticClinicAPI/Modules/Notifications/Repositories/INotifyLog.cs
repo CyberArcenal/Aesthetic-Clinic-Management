@@ -1,4 +1,4 @@
-using AestheticClinicAPI.Modules.Shared;
+using AestheticClinicAPI.Shared;
 using AestheticClinicAPI.Modules.Notifications.Models;
 
 namespace AestheticClinicAPI.Modules.Notifications.Repositories

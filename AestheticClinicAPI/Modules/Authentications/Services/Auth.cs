@@ -4,7 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
-using AestheticClinicAPI.Modules.Shared;
+using AestheticClinicAPI.Shared;
 using AestheticClinicAPI.Modules.Authentications.DTOs;
 using AestheticClinicAPI.Modules.Authentications.Models;
 using AestheticClinicAPI.Modules.Authentications.Repositories;

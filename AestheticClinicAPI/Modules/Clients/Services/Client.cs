@@ -1,7 +1,7 @@
 using System.Linq.Expressions;
 using AestheticClinicAPI.Modules.Clients.Models;
 using AestheticClinicAPI.Modules.Clients.Repositories;
-using AestheticClinicAPI.Modules.Shared;
+using AestheticClinicAPI.Shared;
 
 namespace AestheticClinicAPI.Modules.Clients.Services
 {

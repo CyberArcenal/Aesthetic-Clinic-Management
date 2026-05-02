@@ -1,4 +1,4 @@
-using AestheticClinicAPI.Modules.Shared;
+using AestheticClinicAPI.Shared;
 using AestheticClinicAPI.Modules.Staff.DTOs;
 
 namespace AestheticClinicAPI.Modules.Staff.Services

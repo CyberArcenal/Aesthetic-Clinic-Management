@@ -1,11 +1,19 @@
 {
   "Version": 1,
-  "Hash": "+fpHkLkPgw6kh7vZV1oSgkrFe7xzdmXUIfX80Ab8w+Y=",
+  "Hash": "pAfU6ouqzagstM7DWGVuGBN4HST4DAsvywPGAceCu0I=",
   "Source": "AestheticClinicAPI",
   "BasePath": "_content/AestheticClinicAPI",
   "Mode": "Default",
   "ManifestType": "Build",
   "ReferencedProjectsConfiguration": [],
-  "DiscoveryPatterns": [],
+  "DiscoveryPatterns": [
+    {
+      "Name": "AestheticClinicAPI\\wwwroot",
+      "Source": "AestheticClinicAPI",
+      "ContentRoot": "C:\\Users\\darius\\Documents\\GitHub\\Aesthetic-Clinic-Management\\AestheticClinicAPI\\wwwroot\\",
+      "BasePath": "_content/AestheticClinicAPI",
+      "Pattern": "**"
+    }
+  ],
   "Assets": []
 }

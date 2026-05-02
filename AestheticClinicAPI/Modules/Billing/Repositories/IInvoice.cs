@@ -1,4 +1,4 @@
-using AestheticClinicAPI.Modules.Shared;
+using AestheticClinicAPI.Shared;
 using AestheticClinicAPI.Modules.Billing.Models;
 
 namespace AestheticClinicAPI.Modules.Billing.Repositories
