@@ -1,11 +1,11 @@
+using System.Linq.Expressions;
+using AestheticClinicAPI.Modules.Notifications.DTOs;
+using AestheticClinicAPI.Modules.Notifications.Models;
+using AestheticClinicAPI.Modules.Notifications.Repositories;
+using AestheticClinicAPI.Modules.Notifications.Services;
+using AestheticClinicAPI.Shared;
 using Moq;
 using Xunit;
-using System.Linq.Expressions;
-using AestheticClinicAPI.Shared;
-using AestheticClinicAPI.Modules.Notifications.Services;
-using AestheticClinicAPI.Modules.Notifications.Repositories;
-using AestheticClinicAPI.Modules.Notifications.Models;
-using AestheticClinicAPI.Modules.Notifications.DTOs;
 
 namespace AestheticClinicAPI.Tests.UnitTests.Notifications;
 
@@ -20,13 +20,14 @@ public class NotificationTemplateServiceTests
         _templateService = new NotificationTemplateService(_templateRepoMock.Object);
     }
 
-    private NotificationTemplate CreateSampleTemplate(int id = 1) => new NotificationTemplate
-    {
-        Id = id,
-        Name = "AppointmentReminder",
-        Subject = "Reminder: Your appointment is tomorrow",
-        Content = "Dear {{ClientName}}, your appointment is on {{AppointmentDate}}."
-    };
+    private NotificationTemplate CreateSampleTemplate(int id = 1) =>
+        new NotificationTemplate
+        {
+            Id = id,
+            Name = "AppointmentReminder",
+            Subject = "Reminder: Your appointment is tomorrow",
+            Content = "Dear {{ClientName}}, your appointment is on {{AppointmentDate}}.",
+        };
 
     [Fact]
     public async Task GetByIdAsync_Existing_ReturnsDto()
@@ -48,7 +49,9 @@ public class NotificationTemplateServiceTests
     {
         // Arrange
         var template = CreateSampleTemplate(1);
-        _templateRepoMock.Setup(r => r.GetByNameAsync("AppointmentReminder")).ReturnsAsync(template);
+        _templateRepoMock
+            .Setup(r => r.GetByNameAsync("AppointmentReminder"))
+            .ReturnsAsync(template);
 
         // Act
         var result = await _templateService.GetByNameAsync("AppointmentReminder");
@@ -66,10 +69,11 @@ public class NotificationTemplateServiceTests
         {
             Name = "WelcomeEmail",
             Subject = "Welcome to our clinic",
-            Content = "Hello {{ClientName}}, welcome!"
+            Content = "Hello {{ClientName}}, welcome!",
         };
         NotificationTemplate? captured = null;
-        _templateRepoMock.Setup(r => r.AddAsync(It.IsAny<NotificationTemplate>()))
+        _templateRepoMock
+            .Setup(r => r.AddAsync(It.IsAny<NotificationTemplate>()))
             .Callback<NotificationTemplate>(t => captured = t)
             .ReturnsAsync((NotificationTemplate t) => t);
 
@@ -93,7 +97,7 @@ public class NotificationTemplateServiceTests
         {
             Name = "UpdatedReminder",
             Subject = "Updated subject",
-            Content = "New content"
+            Content = "New content",
         };
 
         // Act

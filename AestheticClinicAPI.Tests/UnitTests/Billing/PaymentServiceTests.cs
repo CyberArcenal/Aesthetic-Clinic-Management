@@ -1,10 +1,10 @@
+using AestheticClinicAPI.Modules.Billing.DTOs;
+using AestheticClinicAPI.Modules.Billing.Models;
+using AestheticClinicAPI.Modules.Billing.Repositories;
+using AestheticClinicAPI.Modules.Billing.Services;
+using AestheticClinicAPI.Shared;
 using Moq;
 using Xunit;
-using AestheticClinicAPI.Shared;
-using AestheticClinicAPI.Modules.Billing.Services;
-using AestheticClinicAPI.Modules.Billing.Repositories;
-using AestheticClinicAPI.Modules.Billing.Models;
-using AestheticClinicAPI.Modules.Billing.DTOs;
 
 namespace AestheticClinicAPI.Tests.UnitTests.Billing;
 
@@ -21,13 +21,14 @@ public class PaymentServiceTests
         _paymentService = new PaymentService(_paymentRepoMock.Object, _invoiceServiceMock.Object);
     }
 
-    private InvoiceResponseDto CreateSampleInvoiceDto() => new InvoiceResponseDto
-    {
-        Id = 1,
-        InvoiceNumber = "INV-001",
-        Total = 1000,
-        Status = "Draft"
-    };
+    private InvoiceResponseDto CreateSampleInvoiceDto() =>
+        new InvoiceResponseDto
+        {
+            Id = 1,
+            InvoiceNumber = "INV-001",
+            Total = 1000,
+            Status = "Draft",
+        };
 
     [Fact]
     public async Task CreateAsync_ValidPayment_UpdatesInvoiceStatusToPartial()
@@ -38,21 +39,28 @@ public class PaymentServiceTests
             InvoiceId = 1,
             Amount = 300,
             PaymentDate = DateTime.UtcNow,
-            Method = "Cash"
+            Method = "Cash",
         };
         var invoiceDto = CreateSampleInvoiceDto();
-        _invoiceServiceMock.Setup(s => s.GetByIdAsync(1))
+        _invoiceServiceMock
+            .Setup(s => s.GetByIdAsync(1))
             .ReturnsAsync(ServiceResult<InvoiceResponseDto>.Success(invoiceDto));
-        _invoiceServiceMock.Setup(s => s.GetTotalPaidForInvoiceAsync(1))
+        _invoiceServiceMock
+            .Setup(s => s.GetTotalPaidForInvoiceAsync(1))
             .ReturnsAsync(ServiceResult<decimal>.Success(300));
-        _invoiceServiceMock.Setup(s => s.UpdateStatusAsync(1, "Partial"))
+        _invoiceServiceMock
+            .Setup(s => s.UpdateStatusAsync(1, "Partial"))
             .ReturnsAsync(ServiceResult<bool>.Success(true));
 
         Payment? capturedPayment = null;
-        _paymentRepoMock.Setup(r => r.AddAsync(It.IsAny<Payment>()))
+        _paymentRepoMock
+            .Setup(r => r.AddAsync(It.IsAny<Payment>()))
             .Callback<Payment>(p => capturedPayment = p)
             .ReturnsAsync((Payment p) => p);
-        _paymentRepoMock.Setup(r => r.GetTotalPaymentsByDateRangeAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>()))
+        _paymentRepoMock
+            .Setup(r =>
+                r.GetTotalPaymentsByDateRangeAsync(It.IsAny<DateTime>(), It.IsAny<DateTime>())
+            )
             .ReturnsAsync(0); // for safe measure
 
         // Act
@@ -70,7 +78,8 @@ public class PaymentServiceTests
     {
         // Arrange
         var dto = new CreatePaymentDto { InvoiceId = 99 };
-        _invoiceServiceMock.Setup(s => s.GetByIdAsync(99))
+        _invoiceServiceMock
+            .Setup(s => s.GetByIdAsync(99))
             .ReturnsAsync(ServiceResult<InvoiceResponseDto>.Failure("Invoice not found."));
 
         // Act
@@ -86,15 +95,23 @@ public class PaymentServiceTests
     public async Task DeleteAsync_RemovesPaymentAndRecalculatesInvoiceStatus()
     {
         // Arrange
-        var payment = new Payment { Id = 1, InvoiceId = 1, Amount = 300 };
+        var payment = new Payment
+        {
+            Id = 1,
+            InvoiceId = 1,
+            Amount = 300,
+        };
         var invoiceDto = CreateSampleInvoiceDto();
         _paymentRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(payment);
         _paymentRepoMock.Setup(r => r.DeleteAsync(payment)).Returns(Task.CompletedTask);
-        _invoiceServiceMock.Setup(s => s.GetTotalPaidForInvoiceAsync(1))
+        _invoiceServiceMock
+            .Setup(s => s.GetTotalPaidForInvoiceAsync(1))
             .ReturnsAsync(ServiceResult<decimal>.Success(0));
-        _invoiceServiceMock.Setup(s => s.GetByIdAsync(1))
+        _invoiceServiceMock
+            .Setup(s => s.GetByIdAsync(1))
             .ReturnsAsync(ServiceResult<InvoiceResponseDto>.Success(invoiceDto));
-        _invoiceServiceMock.Setup(s => s.UpdateStatusAsync(1, "Sent"))
+        _invoiceServiceMock
+            .Setup(s => s.UpdateStatusAsync(1, "Sent"))
             .ReturnsAsync(ServiceResult<bool>.Success(true));
 
         // Act

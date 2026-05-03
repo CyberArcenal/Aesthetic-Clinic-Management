@@ -1,11 +1,11 @@
+using System.Linq.Expressions;
+using AestheticClinicAPI.Modules.Authentications.Models;
+using AestheticClinicAPI.Modules.Authentications.Repositories;
+using AestheticClinicAPI.Modules.Authentications.Services;
+using AestheticClinicAPI.Shared;
+using BCrypt.Net;
 using Moq;
 using Xunit;
-using AestheticClinicAPI.Shared;
-using AestheticClinicAPI.Modules.Authentications.Services;
-using AestheticClinicAPI.Modules.Authentications.Repositories;
-using AestheticClinicAPI.Modules.Authentications.Models;
-using System.Linq.Expressions;
-using BCrypt.Net;
 
 namespace AestheticClinicAPI.Tests.UnitTests.Authentications;
 
@@ -27,7 +27,8 @@ public class UserServicePasswordResetTests
             _userRepoMock.Object,
             _userRoleRepoMock.Object,
             _roleRepoMock.Object,
-            _tokenRepoMock.Object);
+            _tokenRepoMock.Object
+        );
     }
 
     #region GeneratePasswordResetTokenAsync Tests
@@ -40,7 +41,8 @@ public class UserServicePasswordResetTests
         var user = new User { Id = userId, Username = "testuser" };
         _userRepoMock.Setup(r => r.GetByIdAsync(userId)).ReturnsAsync(user);
         _tokenRepoMock.Setup(r => r.RevokeAllForUserAsync(userId)).Returns(Task.CompletedTask);
-        _tokenRepoMock.Setup(r => r.AddAsync(It.IsAny<PasswordResetToken>()))
+        _tokenRepoMock
+            .Setup(r => r.AddAsync(It.IsAny<PasswordResetToken>()))
             .ReturnsAsync((PasswordResetToken t) => t);
 
         // Act
@@ -85,7 +87,7 @@ public class UserServicePasswordResetTests
             UserId = 1,
             Token = token,
             ExpiryDate = DateTime.UtcNow.AddHours(1),
-            IsUsed = false
+            IsUsed = false,
         };
         var user = new User { Id = 1, PasswordHash = BCrypt.Net.BCrypt.HashPassword("old") };
 
@@ -109,7 +111,9 @@ public class UserServicePasswordResetTests
     public async Task ResetPasswordAsync_InvalidToken_ReturnsFailure()
     {
         // Arrange
-        _tokenRepoMock.Setup(r => r.GetByTokenAsync("invalid")).ReturnsAsync((PasswordResetToken?)null);
+        _tokenRepoMock
+            .Setup(r => r.GetByTokenAsync("invalid"))
+            .ReturnsAsync((PasswordResetToken?)null);
 
         // Act
         var result = await _userService.ResetPasswordAsync("invalid", "newpass");
@@ -131,7 +135,7 @@ public class UserServicePasswordResetTests
             UserId = 1,
             Token = token,
             ExpiryDate = DateTime.UtcNow.AddHours(-1), // expired
-            IsUsed = false
+            IsUsed = false,
         };
         _tokenRepoMock.Setup(r => r.GetByTokenAsync(token)).ReturnsAsync((PasswordResetToken?)null); // because repository filters by expiry
 
@@ -154,7 +158,7 @@ public class UserServicePasswordResetTests
             UserId = 99,
             Token = token,
             ExpiryDate = DateTime.UtcNow.AddHours(1),
-            IsUsed = false
+            IsUsed = false,
         };
         _tokenRepoMock.Setup(r => r.GetByTokenAsync(token)).ReturnsAsync(resetTokenEntity);
         _userRepoMock.Setup(r => r.GetByIdAsync(99)).ReturnsAsync((User?)null);

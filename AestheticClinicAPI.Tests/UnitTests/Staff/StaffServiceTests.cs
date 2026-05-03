@@ -1,11 +1,11 @@
+using System.Linq.Expressions;
+using AestheticClinicAPI.Modules.Staff.DTOs;
+using AestheticClinicAPI.Modules.Staff.Models;
+using AestheticClinicAPI.Modules.Staff.Repositories;
+using AestheticClinicAPI.Modules.Staff.Services;
+using AestheticClinicAPI.Shared;
 using Moq;
 using Xunit;
-using System.Linq.Expressions;
-using AestheticClinicAPI.Shared;
-using AestheticClinicAPI.Modules.Staff.Services;
-using AestheticClinicAPI.Modules.Staff.Repositories;
-using AestheticClinicAPI.Modules.Staff.Models;
-using AestheticClinicAPI.Modules.Staff.DTOs;
 
 namespace AestheticClinicAPI.Tests.UnitTests.Staff;
 
@@ -20,15 +20,16 @@ public class StaffServiceTests
         _staffService = new StaffService(_staffRepoMock.Object);
     }
 
-    private StaffMember CreateSampleStaff(int id = 1) => new StaffMember
-    {
-        Id = id,
-        Name = "Dr. John Doe",
-        Email = "john@clinic.com",
-        Phone = "09123456789",
-        Position = "Dermatologist",
-        IsActive = true
-    };
+    private StaffMember CreateSampleStaff(int id = 1) =>
+        new StaffMember
+        {
+            Id = id,
+            Name = "Dr. John Doe",
+            Email = "john@clinic.com",
+            Phone = "09123456789",
+            Position = "Dermatologist",
+            IsActive = true,
+        };
 
     #region GetByIdAsync Tests
 
@@ -77,10 +78,11 @@ public class StaffServiceTests
             Email = "jane@clinic.com",
             Phone = "09123456788",
             Position = "Nurse",
-            IsActive = true
+            IsActive = true,
         };
         StaffMember? captured = null;
-        _staffRepoMock.Setup(r => r.AddAsync(It.IsAny<StaffMember>()))
+        _staffRepoMock
+            .Setup(r => r.AddAsync(It.IsAny<StaffMember>()))
             .Callback<StaffMember>(s => captured = s)
             .ReturnsAsync((StaffMember s) => s);
 
@@ -111,7 +113,7 @@ public class StaffServiceTests
         {
             Name = "Dr. John Updated",
             Position = "Senior Dermatologist",
-            IsActive = false
+            IsActive = false,
         };
 
         // Act
@@ -219,7 +221,12 @@ public class StaffServiceTests
         var activeStaff = new List<StaffMember>
         {
             CreateSampleStaff(1),
-            new StaffMember { Id = 2, Name = "Dr. Active", IsActive = true }
+            new StaffMember
+            {
+                Id = 2,
+                Name = "Dr. Active",
+                IsActive = true,
+            },
         };
         _staffRepoMock.Setup(r => r.GetActiveAsync()).ReturnsAsync(activeStaff);
 
@@ -243,9 +250,16 @@ public class StaffServiceTests
         var staffList = new List<StaffMember>
         {
             CreateSampleStaff(1),
-            new StaffMember { Id = 2, Name = "Nurse Ann", Position = "Nurse" }
+            new StaffMember
+            {
+                Id = 2,
+                Name = "Nurse Ann",
+                Position = "Nurse",
+            },
         };
-        _staffRepoMock.Setup(r => r.GetByPositionAsync("Dermatologist")).ReturnsAsync(staffList.Where(s => s.Position == "Dermatologist").ToList());
+        _staffRepoMock
+            .Setup(r => r.GetByPositionAsync("Dermatologist"))
+            .ReturnsAsync(staffList.Where(s => s.Position == "Dermatologist").ToList());
 
         // Act
         var result = await _staffService.GetByPositionAsync("Dermatologist");
@@ -268,16 +282,17 @@ public class StaffServiceTests
         {
             CreateSampleStaff(1),
             CreateSampleStaff(2),
-            CreateSampleStaff(3)
+            CreateSampleStaff(3),
         };
         var paginated = new PaginatedResult<StaffMember>
         {
             Items = staffList,
             Page = 1,
             PageSize = 10,
-            TotalCount = 3
+            TotalCount = 3,
         };
-        _staffRepoMock.Setup(r => r.GetPaginatedAsync(1, 10, It.IsAny<Expression<Func<StaffMember, bool>>>()))
+        _staffRepoMock
+            .Setup(r => r.GetPaginatedAsync(1, 10, It.IsAny<Expression<Func<StaffMember, bool>>>()))
             .ReturnsAsync(paginated);
 
         // Act
@@ -294,9 +309,26 @@ public class StaffServiceTests
     {
         // Arrange
         Expression<Func<StaffMember, bool>>? capturedFilter = null;
-        _staffRepoMock.Setup(r => r.GetPaginatedAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<Expression<Func<StaffMember, bool>>>()))
-            .Callback<int, int, Expression<Func<StaffMember, bool>>>((p, ps, f) => capturedFilter = f)
-            .ReturnsAsync(new PaginatedResult<StaffMember> { Items = new List<StaffMember>(), Page = 1, PageSize = 10, TotalCount = 0 });
+        _staffRepoMock
+            .Setup(r =>
+                r.GetPaginatedAsync(
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<Expression<Func<StaffMember, bool>>>()
+                )
+            )
+            .Callback<int, int, Expression<Func<StaffMember, bool>>>(
+                (p, ps, f) => capturedFilter = f
+            )
+            .ReturnsAsync(
+                new PaginatedResult<StaffMember>
+                {
+                    Items = new List<StaffMember>(),
+                    Page = 1,
+                    PageSize = 10,
+                    TotalCount = 0,
+                }
+            );
 
         // Act
         await _staffService.GetPaginatedAsync(1, 10, "john");

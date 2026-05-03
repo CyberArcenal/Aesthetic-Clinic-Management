@@ -1,10 +1,10 @@
+using AestheticClinicAPI.Modules.Authentications.DTOs;
+using AestheticClinicAPI.Modules.Authentications.Models;
+using AestheticClinicAPI.Modules.Authentications.Repositories;
+using AestheticClinicAPI.Modules.Authentications.Services;
+using AestheticClinicAPI.Shared;
 using Moq;
 using Xunit;
-using AestheticClinicAPI.Shared;
-using AestheticClinicAPI.Modules.Authentications.Services;
-using AestheticClinicAPI.Modules.Authentications.Repositories;
-using AestheticClinicAPI.Modules.Authentications.Models;
-using AestheticClinicAPI.Modules.Authentications.DTOs;
 
 namespace AestheticClinicAPI.Tests.UnitTests.Authentications;
 
@@ -20,7 +20,11 @@ public class UserRoleServiceTests
         _userRoleRepoMock = new Mock<IUserRoleRepository>();
         _userRepoMock = new Mock<IUserRepository>();
         _roleRepoMock = new Mock<IRoleRepository>();
-        _userRoleService = new UserRoleService(_userRoleRepoMock.Object, _userRepoMock.Object, _roleRepoMock.Object);
+        _userRoleService = new UserRoleService(
+            _userRoleRepoMock.Object,
+            _userRepoMock.Object,
+            _roleRepoMock.Object
+        );
     }
 
     [Fact]
@@ -29,9 +33,13 @@ public class UserRoleServiceTests
         // Arrange
         var dto = new AssignRoleDto { UserId = 1, RoleId = 2 };
         _userRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(new User { Id = 1 });
-        _roleRepoMock.Setup(r => r.GetByIdAsync(2)).ReturnsAsync(new Role { Id = 2, Name = "Staff" });
+        _roleRepoMock
+            .Setup(r => r.GetByIdAsync(2))
+            .ReturnsAsync(new Role { Id = 2, Name = "Staff" });
         _userRoleRepoMock.Setup(r => r.UserHasRoleAsync(1, "Staff")).ReturnsAsync(false);
-        _userRoleRepoMock.Setup(r => r.AddAsync(It.IsAny<UserRole>())).ReturnsAsync((UserRole ur) => ur);
+        _userRoleRepoMock
+            .Setup(r => r.AddAsync(It.IsAny<UserRole>()))
+            .ReturnsAsync((UserRole ur) => ur);
 
         // Act
         var result = await _userRoleService.AssignRoleAsync(dto);
@@ -62,8 +70,7 @@ public class UserRoleServiceTests
         // Arrange
         var dto = new AssignRoleDto { UserId = 1, RoleId = 2 };
         var userRole = new UserRole { UserId = 1, RoleId = 2 };
-        _userRoleRepoMock.Setup(r => r.GetByUserIdAsync(1))
-            .ReturnsAsync(new[] { userRole });
+        _userRoleRepoMock.Setup(r => r.GetByUserIdAsync(1)).ReturnsAsync(new[] { userRole });
         _userRoleRepoMock.Setup(r => r.DeleteAsync(userRole)).Returns(Task.CompletedTask);
 
         // Act

@@ -1,13 +1,13 @@
+using System.Linq.Expressions;
+using AestheticClinicAPI.Modules.Appointments.Models;
+using AestheticClinicAPI.Modules.Appointments.Repositories;
+using AestheticClinicAPI.Modules.Treatments.DTOs;
+using AestheticClinicAPI.Modules.Treatments.Models;
+using AestheticClinicAPI.Modules.Treatments.Repositories;
+using AestheticClinicAPI.Modules.Treatments.Services;
+using AestheticClinicAPI.Shared;
 using Moq;
 using Xunit;
-using System.Linq.Expressions;
-using AestheticClinicAPI.Shared;
-using AestheticClinicAPI.Modules.Treatments.Services;
-using AestheticClinicAPI.Modules.Treatments.Repositories;
-using AestheticClinicAPI.Modules.Treatments.Models;
-using AestheticClinicAPI.Modules.Treatments.DTOs;
-using AestheticClinicAPI.Modules.Appointments.Repositories;
-using AestheticClinicAPI.Modules.Appointments.Models;
 
 namespace AestheticClinicAPI.Tests.UnitTests.Treatments;
 
@@ -21,20 +21,24 @@ public class TreatmentServiceTests
     {
         _treatmentRepoMock = new Mock<ITreatmentRepository>();
         _appointmentRepoMock = new Mock<IAppointmentRepository>();
-        _treatmentService = new TreatmentService(_treatmentRepoMock.Object, _appointmentRepoMock.Object);
+        _treatmentService = new TreatmentService(
+            _treatmentRepoMock.Object,
+            _appointmentRepoMock.Object
+        );
     }
 
-    private Treatment CreateSampleTreatment(int id = 1) => new Treatment
-    {
-        Id = id,
-        Name = "HydraFacial",
-        Description = "Deep cleansing facial",
-        Category = "Facial",
-        DurationMinutes = 60,
-        Price = 3500,
-        IsActive = true,
-        CreatedAt = DateTime.UtcNow
-    };
+    private Treatment CreateSampleTreatment(int id = 1) =>
+        new Treatment
+        {
+            Id = id,
+            Name = "HydraFacial",
+            Description = "Deep cleansing facial",
+            Category = "Facial",
+            DurationMinutes = 60,
+            Price = 3500,
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow,
+        };
 
     #region GetByIdAsync Tests
 
@@ -84,10 +88,11 @@ public class TreatmentServiceTests
             Category = "Injectable",
             DurationMinutes = 30,
             Price = 8000,
-            IsActive = true
+            IsActive = true,
         };
         Treatment? captured = null;
-        _treatmentRepoMock.Setup(r => r.AddAsync(It.IsAny<Treatment>()))
+        _treatmentRepoMock
+            .Setup(r => r.AddAsync(It.IsAny<Treatment>()))
             .Callback<Treatment>(t => captured = t)
             .ReturnsAsync((Treatment t) => t);
 
@@ -119,7 +124,7 @@ public class TreatmentServiceTests
             Name = "HydraFacial Deluxe",
             Price = 4500,
             DurationMinutes = 75,
-            IsActive = false
+            IsActive = false,
         };
 
         // Act
@@ -228,7 +233,12 @@ public class TreatmentServiceTests
         var treatments = new List<Treatment>
         {
             CreateSampleTreatment(1),
-            new Treatment { Id = 2, Name = "Chemical Peel", Category = "Facial" }
+            new Treatment
+            {
+                Id = 2,
+                Name = "Chemical Peel",
+                Category = "Facial",
+            },
         };
         _treatmentRepoMock.Setup(r => r.GetByCategoryAsync("Facial")).ReturnsAsync(treatments);
 
@@ -252,7 +262,12 @@ public class TreatmentServiceTests
         var activeTreatments = new List<Treatment>
         {
             CreateSampleTreatment(1),
-            new Treatment { Id = 2, Name = "Active Treatment", IsActive = true }
+            new Treatment
+            {
+                Id = 2,
+                Name = "Active Treatment",
+                IsActive = true,
+            },
         };
         _treatmentRepoMock.Setup(r => r.GetActiveAsync()).ReturnsAsync(activeTreatments);
 
@@ -276,15 +291,17 @@ public class TreatmentServiceTests
         var treatments = new List<Treatment>
         {
             new Treatment { Id = 1, Price = 3500 },
-            new Treatment { Id = 2, Price = 8000 }
+            new Treatment { Id = 2, Price = 8000 },
         };
         var completedAppointments = new List<Appointment>
         {
             new Appointment { TreatmentId = 1, Status = "Completed" },
             new Appointment { TreatmentId = 1, Status = "Completed" },
-            new Appointment { TreatmentId = 2, Status = "Completed" }
+            new Appointment { TreatmentId = 2, Status = "Completed" },
         };
-        _appointmentRepoMock.Setup(r => r.GetByStatusAsync("Completed")).ReturnsAsync(completedAppointments);
+        _appointmentRepoMock
+            .Setup(r => r.GetByStatusAsync("Completed"))
+            .ReturnsAsync(completedAppointments);
         _treatmentRepoMock.Setup(r => r.GetAllAsync()).ReturnsAsync(treatments);
 
         // Act
@@ -322,16 +339,17 @@ public class TreatmentServiceTests
         {
             CreateSampleTreatment(1),
             CreateSampleTreatment(2),
-            CreateSampleTreatment(3)
+            CreateSampleTreatment(3),
         };
         var paginated = new PaginatedResult<Treatment>
         {
             Items = treatments,
             Page = 1,
             PageSize = 10,
-            TotalCount = 3
+            TotalCount = 3,
         };
-        _treatmentRepoMock.Setup(r => r.GetPaginatedAsync(1, 10, It.IsAny<Expression<Func<Treatment, bool>>>()))
+        _treatmentRepoMock
+            .Setup(r => r.GetPaginatedAsync(1, 10, It.IsAny<Expression<Func<Treatment, bool>>>()))
             .ReturnsAsync(paginated);
 
         // Act
@@ -348,9 +366,24 @@ public class TreatmentServiceTests
     {
         // Arrange
         Expression<Func<Treatment, bool>>? capturedFilter = null;
-        _treatmentRepoMock.Setup(r => r.GetPaginatedAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<Expression<Func<Treatment, bool>>>()))
+        _treatmentRepoMock
+            .Setup(r =>
+                r.GetPaginatedAsync(
+                    It.IsAny<int>(),
+                    It.IsAny<int>(),
+                    It.IsAny<Expression<Func<Treatment, bool>>>()
+                )
+            )
             .Callback<int, int, Expression<Func<Treatment, bool>>>((p, ps, f) => capturedFilter = f)
-            .ReturnsAsync(new PaginatedResult<Treatment> { Items = new List<Treatment>(), Page = 1, PageSize = 10, TotalCount = 0 });
+            .ReturnsAsync(
+                new PaginatedResult<Treatment>
+                {
+                    Items = new List<Treatment>(),
+                    Page = 1,
+                    PageSize = 10,
+                    TotalCount = 0,
+                }
+            );
 
         // Act
         await _treatmentService.GetPaginatedAsync(1, 10, "facial");

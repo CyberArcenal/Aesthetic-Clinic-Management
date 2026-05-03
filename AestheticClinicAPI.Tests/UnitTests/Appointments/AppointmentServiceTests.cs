@@ -1,19 +1,22 @@
+using System.Linq.Expressions;
+using AestheticClinicAPI.Modules.Appointments.Constants;
+using AestheticClinicAPI.Modules.Appointments.DTOs;
+using AestheticClinicAPI.Modules.Appointments.Models;
+using AestheticClinicAPI.Modules.Appointments.Repositories;
+using AestheticClinicAPI.Modules.Appointments.Services;
+using AestheticClinicAPI.Modules.Appointments.StateTransitionService;
+using AestheticClinicAPI.Modules.Billing.Services;
+using AestheticClinicAPI.Modules.Clients.Models;
+using AestheticClinicAPI.Modules.Clients.Services;
+using AestheticClinicAPI.Modules.Notifications.Services;
+using AestheticClinicAPI.Modules.Staff.Services;
+using AestheticClinicAPI.Modules.Treatments.DTOs;
+using AestheticClinicAPI.Modules.Treatments.Models;
+using AestheticClinicAPI.Modules.Treatments.Services;
+using AestheticClinicAPI.Shared;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
-using AestheticClinicAPI.Shared;
-using AestheticClinicAPI.Modules.Appointments.Services;
-using AestheticClinicAPI.Modules.Appointments.Repositories;
-using AestheticClinicAPI.Modules.Appointments.Models;
-using AestheticClinicAPI.Modules.Appointments.DTOs;
-using AestheticClinicAPI.Modules.Appointments.Constants;
-using AestheticClinicAPI.Modules.Appointments.StateTransitionService;
-using AestheticClinicAPI.Modules.Treatments.Services;
-using AestheticClinicAPI.Modules.Treatments.Models;
-using AestheticClinicAPI.Modules.Clients.Services;
-using AestheticClinicAPI.Modules.Clients.Models;
-using System.Linq.Expressions;
-using AestheticClinicAPI.Modules.Treatments.DTOs;
-using Microsoft.Extensions.Logging;
 
 namespace AestheticClinicAPI.Tests.UnitTests.Appointments;
 
@@ -30,15 +33,32 @@ public class AppointmentServiceTests
         _appointmentRepoMock = new Mock<IAppointmentRepository>();
         _treatmentServiceMock = new Mock<ITreatmentService>();
         _clientServiceMock = new Mock<IClientService>();
+
+        // Create mocks for all dependencies of AppointmentStateTransition
+        var loggerMock = new Mock<ILogger<AppointmentStateTransition>>();
+        var notificationServiceMock = new Mock<INotificationService>();
+        var notifyLogServiceMock = new Mock<INotifyLogService>();
+        var invoiceServiceMock = new Mock<IInvoiceService>();
+        var staffServiceMock = new Mock<IStaffService>();
+        var treatmentServiceMock = new Mock<ITreatmentService>();
+
         _stateTransitionMock = new Mock<AppointmentStateTransition>(
-    MockBehavior.Default,
-    new object[] { new Mock<ILogger<AppointmentStateTransition>>().Object }
-);
+            MockBehavior.Default,
+            loggerMock.Object,
+            notificationServiceMock.Object,
+            notifyLogServiceMock.Object,
+            invoiceServiceMock.Object,
+            _clientServiceMock.Object, // IClientService
+            staffServiceMock.Object,
+            treatmentServiceMock.Object
+        );
+
         _appointmentService = new AppointmentService(
             _appointmentRepoMock.Object,
             _treatmentServiceMock.Object,
             _clientServiceMock.Object,
-            _stateTransitionMock.Object);
+            _stateTransitionMock.Object
+        );
     }
 
     private Appointment CreateSampleAppointment(int id = 1)
@@ -52,7 +72,7 @@ public class AppointmentServiceTests
             DurationMinutes = 60,
             Status = AppointmentStatus.Scheduled,
             AssignedStaff = "Dr. Smith",
-            Notes = "Test notes"
+            Notes = "Test notes",
         };
     }
 
@@ -62,7 +82,7 @@ public class AppointmentServiceTests
         {
             Id = 1,
             FirstName = "Juan",
-            LastName = "Dela Cruz"
+            LastName = "Dela Cruz",
         };
     }
 
@@ -73,7 +93,7 @@ public class AppointmentServiceTests
             Id = 1,
             Name = "HydraFacial",
             DurationMinutes = 60,
-            Price = 3500
+            Price = 3500,
         };
     }
 
@@ -83,9 +103,11 @@ public class AppointmentServiceTests
         // Arrange
         var appointment = CreateSampleAppointment(1);
         _appointmentRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(appointment);
-        _clientServiceMock.Setup(c => c.GetClientByIdAsync(1))
+        _clientServiceMock
+            .Setup(c => c.GetClientByIdAsync(1))
             .ReturnsAsync(ServiceResult<ClientResponseDto>.Success(CreateSampleClientDto()));
-        _treatmentServiceMock.Setup(t => t.GetByIdAsync(1))
+        _treatmentServiceMock
+            .Setup(t => t.GetByIdAsync(1))
             .ReturnsAsync(ServiceResult<TreatmentResponseDto>.Success(CreateSampleTreatmentDto()));
 
         // Act
@@ -123,21 +145,25 @@ public class AppointmentServiceTests
             TreatmentId = 1,
             AssignedStaff = "Dr. Smith",
             AppointmentDateTime = DateTime.UtcNow.AddDays(2),
-            Notes = "First visit"
+            Notes = "First visit",
         };
 
         var treatmentDto = CreateSampleTreatmentDto();
-        _treatmentServiceMock.Setup(t => t.GetByIdAsync(1))
+        _treatmentServiceMock
+            .Setup(t => t.GetByIdAsync(1))
             .ReturnsAsync(ServiceResult<TreatmentResponseDto>.Success(treatmentDto));
 
         Appointment? capturedAppointment = null;
-        _appointmentRepoMock.Setup(r => r.AddAsync(It.IsAny<Appointment>()))
+        _appointmentRepoMock
+            .Setup(r => r.AddAsync(It.IsAny<Appointment>()))
             .Callback<Appointment>(a => capturedAppointment = a)
             .ReturnsAsync((Appointment a) => a);
 
-        _clientServiceMock.Setup(c => c.GetClientByIdAsync(1))
+        _clientServiceMock
+            .Setup(c => c.GetClientByIdAsync(1))
             .ReturnsAsync(ServiceResult<ClientResponseDto>.Success(CreateSampleClientDto()));
-        _treatmentServiceMock.Setup(t => t.GetByIdAsync(1))
+        _treatmentServiceMock
+            .Setup(t => t.GetByIdAsync(1))
             .ReturnsAsync(ServiceResult<TreatmentResponseDto>.Success(CreateSampleTreatmentDto()));
 
         // Act
@@ -156,7 +182,8 @@ public class AppointmentServiceTests
     {
         // Arrange
         var dto = new CreateAppointmentDto { TreatmentId = 999 };
-        _treatmentServiceMock.Setup(t => t.GetByIdAsync(999))
+        _treatmentServiceMock
+            .Setup(t => t.GetByIdAsync(999))
             .ReturnsAsync(ServiceResult<TreatmentResponseDto>.Failure("Treatment not found."));
 
         // Act
@@ -174,7 +201,9 @@ public class AppointmentServiceTests
         // Arrange
         var appointment = CreateSampleAppointment(1);
         _appointmentRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(appointment);
-        _appointmentRepoMock.Setup(r => r.UpdateAsync(It.IsAny<Appointment>())).Returns(Task.CompletedTask);
+        _appointmentRepoMock
+            .Setup(r => r.UpdateAsync(It.IsAny<Appointment>()))
+            .Returns(Task.CompletedTask);
 
         var dto = new UpdateAppointmentDto
         {
@@ -182,12 +211,14 @@ public class AppointmentServiceTests
             TreatmentId = 2,
             AssignedStaff = "Dr. Jones",
             AppointmentDateTime = DateTime.UtcNow.AddDays(5),
-            Notes = "Updated notes"
+            Notes = "Updated notes",
         };
 
-        _clientServiceMock.Setup(c => c.GetClientByIdAsync(It.IsAny<int>()))
+        _clientServiceMock
+            .Setup(c => c.GetClientByIdAsync(It.IsAny<int>()))
             .ReturnsAsync(ServiceResult<ClientResponseDto>.Success(CreateSampleClientDto()));
-        _treatmentServiceMock.Setup(t => t.GetByIdAsync(It.IsAny<int>()))
+        _treatmentServiceMock
+            .Setup(t => t.GetByIdAsync(It.IsAny<int>()))
             .ReturnsAsync(ServiceResult<TreatmentResponseDto>.Success(CreateSampleTreatmentDto()));
 
         // Act
@@ -255,7 +286,15 @@ public class AppointmentServiceTests
         appointment.Status = AppointmentStatus.Scheduled;
         _appointmentRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(appointment);
         _appointmentRepoMock.Setup(r => r.UpdateAsync(appointment)).Returns(Task.CompletedTask);
-        _stateTransitionMock.Setup(t => t.OnStatusChangedAsync(appointment, AppointmentStatus.Scheduled, AppointmentStatus.Confirmed, default))
+        _stateTransitionMock
+            .Setup(t =>
+                t.OnStatusChangedAsync(
+                    appointment,
+                    AppointmentStatus.Scheduled,
+                    AppointmentStatus.Confirmed,
+                    default
+                )
+            )
             .Returns(Task.CompletedTask);
 
         // Act
@@ -264,7 +303,16 @@ public class AppointmentServiceTests
         // Assert
         Assert.True(result.IsSuccess);
         Assert.Equal(AppointmentStatus.Confirmed, appointment.Status);
-        _stateTransitionMock.Verify(t => t.OnStatusChangedAsync(appointment, AppointmentStatus.Scheduled, AppointmentStatus.Confirmed, default), Times.Once);
+        _stateTransitionMock.Verify(
+            t =>
+                t.OnStatusChangedAsync(
+                    appointment,
+                    AppointmentStatus.Scheduled,
+                    AppointmentStatus.Confirmed,
+                    default
+                ),
+            Times.Once
+        );
         _appointmentRepoMock.Verify(r => r.UpdateAsync(appointment), Times.Once);
     }
 
@@ -272,11 +320,17 @@ public class AppointmentServiceTests
     public async Task GetByClientAsync_ReturnsAppointments()
     {
         // Arrange
-        var appointments = new List<Appointment> { CreateSampleAppointment(1), CreateSampleAppointment(2) };
+        var appointments = new List<Appointment>
+        {
+            CreateSampleAppointment(1),
+            CreateSampleAppointment(2),
+        };
         _appointmentRepoMock.Setup(r => r.GetByClientAsync(1)).ReturnsAsync(appointments);
-        _clientServiceMock.Setup(c => c.GetClientByIdAsync(It.IsAny<int>()))
+        _clientServiceMock
+            .Setup(c => c.GetClientByIdAsync(It.IsAny<int>()))
             .ReturnsAsync(ServiceResult<ClientResponseDto>.Success(CreateSampleClientDto()));
-        _treatmentServiceMock.Setup(t => t.GetByIdAsync(It.IsAny<int>()))
+        _treatmentServiceMock
+            .Setup(t => t.GetByIdAsync(It.IsAny<int>()))
             .ReturnsAsync(ServiceResult<TreatmentResponseDto>.Success(CreateSampleTreatmentDto()));
 
         // Act
@@ -294,10 +348,14 @@ public class AppointmentServiceTests
         var start = DateTime.UtcNow;
         var end = start.AddDays(7);
         var appointments = new List<Appointment> { CreateSampleAppointment(1) };
-        _appointmentRepoMock.Setup(r => r.GetByDateRangeAsync(start, end)).ReturnsAsync(appointments);
-        _clientServiceMock.Setup(c => c.GetClientByIdAsync(It.IsAny<int>()))
+        _appointmentRepoMock
+            .Setup(r => r.GetByDateRangeAsync(start, end))
+            .ReturnsAsync(appointments);
+        _clientServiceMock
+            .Setup(c => c.GetClientByIdAsync(It.IsAny<int>()))
             .ReturnsAsync(ServiceResult<ClientResponseDto>.Success(CreateSampleClientDto()));
-        _treatmentServiceMock.Setup(t => t.GetByIdAsync(It.IsAny<int>()))
+        _treatmentServiceMock
+            .Setup(t => t.GetByIdAsync(It.IsAny<int>()))
             .ReturnsAsync(ServiceResult<TreatmentResponseDto>.Success(CreateSampleTreatmentDto()));
 
         // Act
@@ -312,15 +370,23 @@ public class AppointmentServiceTests
     public async Task CheckAvailabilityAsync_ReturnsAvailability()
     {
         // Arrange
-        _appointmentRepoMock.Setup(r => r.IsTimeSlotAvailableAsync(
-                It.IsAny<int>(),
-                It.IsAny<DateTime>(),
-                It.IsAny<int>(),
-                It.IsAny<int?>()))   // 4th parameter
+        _appointmentRepoMock
+            .Setup(r =>
+                r.IsTimeSlotAvailableAsync(
+                    It.IsAny<int>(),
+                    It.IsAny<DateTime>(),
+                    It.IsAny<int>(),
+                    It.IsAny<int?>()
+                )
+            ) // 4th parameter
             .ReturnsAsync(true);
 
         // Act
-        var result = await _appointmentService.CheckAvailabilityAsync(1, DateTime.UtcNow.AddHours(1), 60);
+        var result = await _appointmentService.CheckAvailabilityAsync(
+            1,
+            DateTime.UtcNow.AddHours(1),
+            60
+        );
 
         // Assert
         Assert.True(result.IsSuccess);
@@ -331,19 +397,32 @@ public class AppointmentServiceTests
     public async Task GetPaginatedAsync_ReturnsPaginatedResult()
     {
         // Arrange
-        var appointments = new List<Appointment> { CreateSampleAppointment(1), CreateSampleAppointment(2) };
+        var appointments = new List<Appointment>
+        {
+            CreateSampleAppointment(1),
+            CreateSampleAppointment(2),
+        };
         var paginated = new PaginatedResult<Appointment>
         {
             Items = appointments,
             Page = 1,
             PageSize = 10,
-            TotalCount = 2
+            TotalCount = 2,
         };
-        _appointmentRepoMock.Setup(r => r.GetPaginatedWithDetailsAsync(1, 10, It.IsAny<Expression<Func<Appointment, bool>>>()))
+        _appointmentRepoMock
+            .Setup(r =>
+                r.GetPaginatedWithDetailsAsync(
+                    1,
+                    10,
+                    It.IsAny<Expression<Func<Appointment, bool>>>()
+                )
+            )
             .ReturnsAsync(paginated);
-        _clientServiceMock.Setup(c => c.GetClientByIdAsync(It.IsAny<int>()))
+        _clientServiceMock
+            .Setup(c => c.GetClientByIdAsync(It.IsAny<int>()))
             .ReturnsAsync(ServiceResult<ClientResponseDto>.Success(CreateSampleClientDto()));
-        _treatmentServiceMock.Setup(t => t.GetByIdAsync(It.IsAny<int>()))
+        _treatmentServiceMock
+            .Setup(t => t.GetByIdAsync(It.IsAny<int>()))
             .ReturnsAsync(ServiceResult<TreatmentResponseDto>.Success(CreateSampleTreatmentDto()));
 
         // Act

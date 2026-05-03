@@ -1,12 +1,12 @@
+using AestheticClinicAPI.Modules.Authentications.DTOs;
+using AestheticClinicAPI.Modules.Authentications.Services;
+using AestheticClinicAPI.Modules.Notifications.DTOs;
+using AestheticClinicAPI.Modules.Notifications.Models;
+using AestheticClinicAPI.Modules.Notifications.Repositories;
+using AestheticClinicAPI.Modules.Notifications.Services;
+using AestheticClinicAPI.Shared;
 using Moq;
 using Xunit;
-using AestheticClinicAPI.Shared;
-using AestheticClinicAPI.Modules.Notifications.Services;
-using AestheticClinicAPI.Modules.Notifications.Repositories;
-using AestheticClinicAPI.Modules.Notifications.Models;
-using AestheticClinicAPI.Modules.Notifications.DTOs;
-using AestheticClinicAPI.Modules.Authentications.Services;
-using AestheticClinicAPI.Modules.Authentications.DTOs;
 
 namespace AestheticClinicAPI.Tests.UnitTests.Notifications;
 
@@ -20,35 +20,45 @@ public class NotificationServiceTests
     {
         _notifRepoMock = new Mock<INotificationRepository>();
         _userServiceMock = new Mock<IUserService>();
-        _notificationService = new NotificationService(_notifRepoMock.Object, _userServiceMock.Object);
+        _notificationService = new NotificationService(
+            _notifRepoMock.Object,
+            _userServiceMock.Object
+        );
     }
 
-    private Notification CreateSampleNotification(int id = 1) => new Notification
-    {
-        Id = id,
-        RecipientId = 1,
-        Title = "Test Notification",
-        Message = "This is a test",
-        Type = "Info",
-        Channel = "InApp",
-        IsRead = false,
-        CreatedAt = DateTime.UtcNow
-    };
+    private Notification CreateSampleNotification(int id = 1) =>
+        new Notification
+        {
+            Id = id,
+            RecipientId = 1,
+            Title = "Test Notification",
+            Message = "This is a test",
+            Type = "Info",
+            Channel = "InApp",
+            IsRead = false,
+            CreatedAt = DateTime.UtcNow,
+        };
 
-    private UserResponseDto CreateSampleUserDto() => new UserResponseDto
-    {
-        Id = 1,
-        Username = "testuser",
-        Email = "test@example.com"
-    };
+    private UserResponseDto CreateSampleUserDto() =>
+        new UserResponseDto
+        {
+            Id = 1,
+            Username = "testuser",
+            Email = "test@example.com",
+        };
 
     [Fact]
     public async Task GetByUserAsync_ReturnsNotifications()
     {
         // Arrange
-        var notifications = new List<Notification> { CreateSampleNotification(1), CreateSampleNotification(2) };
+        var notifications = new List<Notification>
+        {
+            CreateSampleNotification(1),
+            CreateSampleNotification(2),
+        };
         _notifRepoMock.Setup(r => r.GetByUserAsync(1, 20)).ReturnsAsync(notifications);
-        _userServiceMock.Setup(u => u.GetByIdAsync(1))
+        _userServiceMock
+            .Setup(u => u.GetByIdAsync(1))
             .ReturnsAsync(ServiceResult<UserResponseDto>.Success(CreateSampleUserDto()));
 
         // Act
@@ -65,7 +75,8 @@ public class NotificationServiceTests
         // Arrange
         var unread = new List<Notification> { CreateSampleNotification(1) };
         _notifRepoMock.Setup(r => r.GetUnreadByUserAsync(1)).ReturnsAsync(unread);
-        _userServiceMock.Setup(u => u.GetByIdAsync(1))
+        _userServiceMock
+            .Setup(u => u.GetByIdAsync(1))
             .ReturnsAsync(ServiceResult<UserResponseDto>.Success(CreateSampleUserDto()));
 
         // Act
@@ -160,13 +171,15 @@ public class NotificationServiceTests
             Message = "Alert message",
             Type = "Warning",
             Channel = "InApp",
-            ActionUrl = "/dashboard"
+            ActionUrl = "/dashboard",
         };
         Notification? captured = null;
-        _notifRepoMock.Setup(r => r.AddAsync(It.IsAny<Notification>()))
+        _notifRepoMock
+            .Setup(r => r.AddAsync(It.IsAny<Notification>()))
             .Callback<Notification>(n => captured = n)
             .ReturnsAsync((Notification n) => n);
-        _userServiceMock.Setup(u => u.GetByIdAsync(1))
+        _userServiceMock
+            .Setup(u => u.GetByIdAsync(1))
             .ReturnsAsync(ServiceResult<UserResponseDto>.Success(CreateSampleUserDto()));
 
         // Act

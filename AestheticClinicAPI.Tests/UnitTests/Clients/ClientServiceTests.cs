@@ -1,10 +1,10 @@
+using System.Linq.Expressions;
+using AestheticClinicAPI.Modules.Clients.Models;
+using AestheticClinicAPI.Modules.Clients.Repositories;
+using AestheticClinicAPI.Modules.Clients.Services;
+using AestheticClinicAPI.Shared;
 using Moq;
 using Xunit;
-using AestheticClinicAPI.Modules.Clients.Services;
-using AestheticClinicAPI.Modules.Clients.Repositories;
-using AestheticClinicAPI.Modules.Clients.Models;
-using AestheticClinicAPI.Shared;
-using System.Linq.Expressions;
 
 namespace AestheticClinicAPI.Tests.UnitTests.Clients;
 
@@ -23,7 +23,13 @@ public class ClientServiceTests
     public async Task GetByIdAsync_ExistingId_ReturnsClient()
     {
         // Arrange
-        var client = new Client { Id = 1, FirstName = "Juan", LastName = "Dela Cruz", Email = "juan@example.com" };
+        var client = new Client
+        {
+            Id = 1,
+            FirstName = "Juan",
+            LastName = "Dela Cruz",
+            Email = "juan@example.com",
+        };
         _clientRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(client);
 
         // Act
@@ -57,17 +63,19 @@ public class ClientServiceTests
         {
             FirstName = "Maria",
             LastName = "Santos",
-            Email = "maria@example.com"
+            Email = "maria@example.com",
         };
         var createdClient = new Client
         {
             Id = 2,
             FirstName = "Maria",
             LastName = "Santos",
-            Email = "maria@example.com"
+            Email = "maria@example.com",
         };
         _clientRepoMock.Setup(r => r.AddAsync(It.IsAny<Client>())).ReturnsAsync(createdClient);
-        _clientRepoMock.Setup(r => r.ExistsAsync(It.IsAny<Expression<Func<Client, bool>>>())).ReturnsAsync(false);
+        _clientRepoMock
+            .Setup(r => r.ExistsAsync(It.IsAny<Expression<Func<Client, bool>>>()))
+            .ReturnsAsync(false);
 
         // Act
         var result = await _clientService.CreateClientAsync(dto);

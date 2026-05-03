@@ -1,13 +1,13 @@
+using System.Linq.Expressions;
+using AestheticClinicAPI.Modules.Billing.DTOs;
+using AestheticClinicAPI.Modules.Billing.Models;
+using AestheticClinicAPI.Modules.Billing.Repositories;
+using AestheticClinicAPI.Modules.Billing.Services;
+using AestheticClinicAPI.Modules.Clients.Models;
+using AestheticClinicAPI.Modules.Clients.Services;
+using AestheticClinicAPI.Shared;
 using Moq;
 using Xunit;
-using AestheticClinicAPI.Shared;
-using AestheticClinicAPI.Modules.Billing.Services;
-using AestheticClinicAPI.Modules.Billing.Repositories;
-using AestheticClinicAPI.Modules.Billing.Models;
-using AestheticClinicAPI.Modules.Billing.DTOs;
-using AestheticClinicAPI.Modules.Clients.Services;
-using AestheticClinicAPI.Modules.Clients.Models;
-using System.Linq.Expressions;
 
 namespace AestheticClinicAPI.Tests.UnitTests.Billing;
 
@@ -24,12 +24,13 @@ public class InvoiceServiceTests
         _invoiceService = new InvoiceService(_invoiceRepoMock.Object, _clientServiceMock.Object);
     }
 
-    private ClientResponseDto CreateSampleClientDto() => new ClientResponseDto
-    {
-        Id = 1,
-        FirstName = "Juan",
-        LastName = "Dela Cruz",
-    };
+    private ClientResponseDto CreateSampleClientDto() =>
+        new ClientResponseDto
+        {
+            Id = 1,
+            FirstName = "Juan",
+            LastName = "Dela Cruz",
+        };
 
     [Fact]
     public async Task CreateAsync_ValidDto_GeneratesInvoiceNumberAndTotal()
@@ -40,17 +41,19 @@ public class InvoiceServiceTests
             ClientId = 1,
             IssueDate = DateTime.UtcNow,
             Subtotal = 1000,
-            Tax = 100
+            Tax = 100,
         };
         Invoice? capturedInvoice = null;
-        _invoiceRepoMock.Setup(r => r.AddAsync(It.IsAny<Invoice>()))
+        _invoiceRepoMock
+            .Setup(r => r.AddAsync(It.IsAny<Invoice>()))
             .Callback<Invoice>(inv => capturedInvoice = inv)
             .ReturnsAsync((Invoice inv) => inv);
-        _invoiceRepoMock.Setup(r => r.CountAsync(It.IsAny<Expression<Func<Invoice, bool>>>()))
+        _invoiceRepoMock
+            .Setup(r => r.CountAsync(It.IsAny<Expression<Func<Invoice, bool>>>()))
             .ReturnsAsync(0);
-        _invoiceRepoMock.Setup(r => r.GetTotalPaidByInvoiceAsync(It.IsAny<int>()))
-            .ReturnsAsync(0);
-        _clientServiceMock.Setup(c => c.GetByIdAsync(1))
+        _invoiceRepoMock.Setup(r => r.GetTotalPaidByInvoiceAsync(It.IsAny<int>())).ReturnsAsync(0);
+        _clientServiceMock
+            .Setup(c => c.GetByIdAsync(1))
             .ReturnsAsync(ServiceResult<ClientResponseDto>.Success(CreateSampleClientDto()));
 
         // Act
@@ -75,11 +78,12 @@ public class InvoiceServiceTests
             Total = 1000,
             InvoiceNumber = "INV-001",
             IssueDate = DateTime.UtcNow,
-            Status = "Draft"
+            Status = "Draft",
         };
         _invoiceRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(invoice);
         _invoiceRepoMock.Setup(r => r.GetTotalPaidByInvoiceAsync(1)).ReturnsAsync(300);
-        _clientServiceMock.Setup(c => c.GetByIdAsync(1))
+        _clientServiceMock
+            .Setup(c => c.GetByIdAsync(1))
             .ReturnsAsync(ServiceResult<ClientResponseDto>.Success(CreateSampleClientDto()));
 
         // Act

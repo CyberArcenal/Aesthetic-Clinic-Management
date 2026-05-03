@@ -1,10 +1,10 @@
+using AestheticClinicAPI.Modules.Authentications.DTOs;
+using AestheticClinicAPI.Modules.Authentications.Models;
+using AestheticClinicAPI.Modules.Authentications.Repositories;
+using AestheticClinicAPI.Modules.Authentications.Services;
+using AestheticClinicAPI.Shared;
 using Moq;
 using Xunit;
-using AestheticClinicAPI.Shared;
-using AestheticClinicAPI.Modules.Authentications.Services;
-using AestheticClinicAPI.Modules.Authentications.Repositories;
-using AestheticClinicAPI.Modules.Authentications.Models;
-using AestheticClinicAPI.Modules.Authentications.DTOs;
 
 namespace AestheticClinicAPI.Tests.UnitTests.Authentications;
 
@@ -23,7 +23,12 @@ public class RoleServiceTests
     public async Task GetByIdAsync_ExistingRole_ReturnsDto()
     {
         // Arrange
-        var role = new Role { Id = 1, Name = "Admin", Description = "Full access" };
+        var role = new Role
+        {
+            Id = 1,
+            Name = "Admin",
+            Description = "Full access",
+        };
         _roleRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(role);
 
         // Act
@@ -54,8 +59,7 @@ public class RoleServiceTests
         // Arrange
         var dto = new CreateRoleDto { Name = "Manager", Description = "Manager role" };
         _roleRepoMock.Setup(r => r.GetByNameAsync(dto.Name)).ReturnsAsync((Role?)null);
-        _roleRepoMock.Setup(r => r.AddAsync(It.IsAny<Role>()))
-            .ReturnsAsync((Role r) => r);
+        _roleRepoMock.Setup(r => r.AddAsync(It.IsAny<Role>())).ReturnsAsync((Role r) => r);
 
         // Act
         var result = await _roleService.CreateAsync(dto);
@@ -70,7 +74,9 @@ public class RoleServiceTests
     {
         // Arrange
         var dto = new CreateRoleDto { Name = "Admin" };
-        _roleRepoMock.Setup(r => r.GetByNameAsync("Admin")).ReturnsAsync(new Role { Id = 1, Name = "Admin" });
+        _roleRepoMock
+            .Setup(r => r.GetByNameAsync("Admin"))
+            .ReturnsAsync(new Role { Id = 1, Name = "Admin" });
 
         // Act
         var result = await _roleService.CreateAsync(dto);

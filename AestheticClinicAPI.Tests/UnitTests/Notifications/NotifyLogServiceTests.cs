@@ -1,13 +1,17 @@
-using Moq;
-using Xunit;
 using System.Linq.Expressions;
 using System.Text.Json;
-using AestheticClinicAPI.Shared;
-using AestheticClinicAPI.Modules.Notifications.Services;
-using AestheticClinicAPI.Modules.Notifications.Repositories;
-using AestheticClinicAPI.Modules.Notifications.Models;
-using AestheticClinicAPI.Modules.Notifications.DTOs;
+using AestheticClinicAPI.Data;
 using AestheticClinicAPI.Modules.Notifications.Channels;
+using AestheticClinicAPI.Modules.Notifications.DTOs;
+using AestheticClinicAPI.Modules.Notifications.Models;
+using AestheticClinicAPI.Modules.Notifications.Repositories;
+using AestheticClinicAPI.Modules.Notifications.Services;
+using AestheticClinicAPI.Modules.Notifications.StateTransitionService;
+using AestheticClinicAPI.Shared;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Moq;
+using Xunit;
 
 namespace AestheticClinicAPI.Tests.UnitTests.Notifications;
 
@@ -20,6 +24,10 @@ public class NotifyLogServiceTests
     private readonly Mock<IPushService> _pushServiceMock;
     private readonly NotifyLogService _notifyLogService;
 
+    // We will use a real in-memory DbContext for the transition (to avoid EF tracking issues)
+    private readonly AppDbContext _dbContext;
+    private readonly NotifyLogStateTransition _stateTransition;
+
     public NotifyLogServiceTests()
     {
         _logRepoMock = new Mock<INotifyLogRepository>();
@@ -27,19 +35,52 @@ public class NotifyLogServiceTests
         _emailServiceMock = new Mock<IEmailService>();
         _smsServiceMock = new Mock<ISmsService>();
         _pushServiceMock = new Mock<IPushService>();
+
         _notifyLogService = new NotifyLogService(
             _logRepoMock.Object,
             _templateServiceMock.Object,
             _emailServiceMock.Object,
             _smsServiceMock.Object,
-            _pushServiceMock.Object);
+            _pushServiceMock.Object
+        );
+
+        // Setup in-memory DbContext for the state transition
+        var options = new DbContextOptionsBuilder<AppDbContext>()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+        _dbContext = new AppDbContext(options);
+
+        _stateTransition = new NotifyLogStateTransition(
+            new Mock<ILogger<NotifyLogStateTransition>>().Object,
+            _dbContext,
+            _templateServiceMock.Object,
+            _emailServiceMock.Object,
+            _smsServiceMock.Object,
+            _pushServiceMock.Object
+        );
     }
 
-   #region GetByIdAsync Tests
+    private async Task<NotifyLog> InvokeStateTransition(NotifyLog log)
+    {
+        // Attach the log to the in-memory DbContext so the transition can update it
+        _dbContext.NotifyLogs.Add(log);
+        await _dbContext.SaveChangesAsync(); // saves the initial "Queued" state
+        await _stateTransition.OnCreatedAsync(log);
+        await _dbContext.SaveChangesAsync(); // saves the updated status
+        return log;
+    }
+
+    #region GetByIdAsync Tests
     [Fact]
     public async Task GetByIdAsync_ExistingLog_ReturnsDto()
     {
-        var log = new NotifyLog { Id = 1, RecipientEmail = "test@example.com", Status = "Queued", Channel = "Email" };
+        var log = new NotifyLog
+        {
+            Id = 1,
+            RecipientEmail = "test@example.com",
+            Status = "Queued",
+            Channel = "Email",
+        };
         _logRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(log);
         var result = await _notifyLogService.GetByIdAsync(1);
         Assert.True(result.IsSuccess);
@@ -57,6 +98,7 @@ public class NotifyLogServiceTests
     #endregion
 
     #region CreateAsync Tests - Email Channel (Custom)
+
     [Fact]
     public async Task CreateAsync_EmailChannelCustom_SendsAndUpdatesLog()
     {
@@ -66,31 +108,41 @@ public class NotifyLogServiceTests
             Subject = "Test Subject",
             Message = "Test Message",
             Channel = "Email",
-            Type = "custom"
+            Type = "custom",
         };
 
         NotifyLog? createdLog = null;
-        _logRepoMock.Setup(r => r.AddAsync(It.IsAny<NotifyLog>()))
+        _logRepoMock
+            .Setup(r => r.AddAsync(It.IsAny<NotifyLog>()))
             .Callback<NotifyLog>(l => createdLog = l)
             .ReturnsAsync((NotifyLog l) => l);
 
-        // Setup email to succeed for this test
-        _emailServiceMock.Setup(e => e.SendSimpleEmailAsync(
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<string>()))
+        _emailServiceMock
+            .Setup(e =>
+                e.SendSimpleEmailAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>()
+                )
+            )
             .ReturnsAsync(true);
 
         _logRepoMock.Setup(r => r.UpdateAsync(It.IsAny<NotifyLog>())).Returns(Task.CompletedTask);
 
         var result = await _notifyLogService.CreateAsync(dto);
         Assert.True(result.IsSuccess);
-        Assert.Equal("Sent", createdLog?.Status);
+
+        // Now invoke the state transition (simulate the interceptor)
+        var finalLog = await InvokeStateTransition(createdLog!);
+
+        Assert.Equal("Sent", finalLog.Status);
     }
+
     #endregion
 
     #region CreateAsync Tests - Email Channel with Template
+
     [Fact]
     public async Task CreateAsync_EmailWithTemplate_RendersAndSends()
     {
@@ -102,46 +154,51 @@ public class NotifyLogServiceTests
             Metadata = new Dictionary<string, string>
             {
                 { "ClientName", "John" },
-                { "AppointmentDate", "2025-05-10" }
-            }
+                { "AppointmentDate", "2025-05-10" },
+            },
         };
 
-        // Template with spaces inside braces – matches service replacement logic
         var templateDto = new NotificationTemplateResponseDto
         {
             Id = 1,
             Name = "AppointmentReminder",
             Subject = "Reminder: {{ ClientName }}",
-            Content = "Hello {{ ClientName }}, your appointment is on {{ AppointmentDate }}."
+            Content = "Hello {{ ClientName }}, your appointment is on {{ AppointmentDate }}.",
         };
 
-        _templateServiceMock.Setup(t => t.GetByNameAsync("AppointmentReminder"))
+        _templateServiceMock
+            .Setup(t => t.GetByNameAsync("AppointmentReminder"))
             .ReturnsAsync(ServiceResult<NotificationTemplateResponseDto>.Success(templateDto));
 
-        // Setup email to succeed
-        _emailServiceMock.Setup(e => e.SendSimpleEmailAsync(
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<string>()))
+        _emailServiceMock
+            .Setup(e =>
+                e.SendSimpleEmailAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>()
+                )
+            )
             .ReturnsAsync(true);
 
         NotifyLog? createdLog = null;
-        _logRepoMock.Setup(r => r.AddAsync(It.IsAny<NotifyLog>()))
+        _logRepoMock
+            .Setup(r => r.AddAsync(It.IsAny<NotifyLog>()))
             .Callback<NotifyLog>(l => createdLog = l)
             .ReturnsAsync((NotifyLog l) => l);
 
-        _logRepoMock.Setup(r => r.UpdateAsync(It.IsAny<NotifyLog>()))
-            .Returns(Task.CompletedTask);
+        _logRepoMock.Setup(r => r.UpdateAsync(It.IsAny<NotifyLog>())).Returns(Task.CompletedTask);
 
         var result = await _notifyLogService.CreateAsync(dto);
         Assert.True(result.IsSuccess);
-        Assert.Equal("Sent", createdLog?.Status);
-        // Rendered subject and payload should contain the replaced values (spaces may remain)
-        Assert.Contains("Reminder: John", createdLog?.Subject);
-        Assert.Contains("Hello John", createdLog?.Payload);
-        Assert.Contains("2025-05-10", createdLog?.Payload);
+
+        var finalLog = await InvokeStateTransition(createdLog!);
+
+        Assert.Equal("Sent", finalLog.Status);
+        Assert.Contains("Reminder: John", finalLog.Subject);
+        Assert.Contains("Hello John", finalLog.Payload);
     }
+
     #endregion
 
     #region CreateAsync Tests - SMS Channel
@@ -154,27 +211,32 @@ public class NotifyLogServiceTests
             Recipient = "+639171234567",
             Message = "Your appointment is confirmed",
             Channel = "Sms",
-            Type = "custom"
+            Type = "custom",
         };
 
         NotifyLog? createdLog = null;
-        _logRepoMock.Setup(r => r.AddAsync(It.IsAny<NotifyLog>()))
+        _logRepoMock
+            .Setup(r => r.AddAsync(It.IsAny<NotifyLog>()))
             .Callback<NotifyLog>(l => createdLog = l)
             .ReturnsAsync((NotifyLog l) => l);
 
-        _smsServiceMock.Setup(s => s.SendSmsAsync("+639171234567", "Your appointment is confirmed"))
+        _smsServiceMock
+            .Setup(s => s.SendSmsAsync("+639171234567", "Your appointment is confirmed"))
             .ReturnsAsync(true);
 
         _logRepoMock.Setup(r => r.UpdateAsync(It.IsAny<NotifyLog>())).Returns(Task.CompletedTask);
 
         var result = await _notifyLogService.CreateAsync(dto);
         Assert.True(result.IsSuccess);
-        Assert.Equal("Sent", createdLog?.Status);
+
+        var finalLog = await InvokeStateTransition(createdLog!);
+
+        Assert.Equal("Sent", finalLog.Status);
     }
 
     #endregion
-
     #region CreateAsync Tests - Email Sending Fails
+
     [Fact]
     public async Task CreateAsync_EmailSendingFails_UpdatesStatusToFailed()
     {
@@ -184,30 +246,38 @@ public class NotifyLogServiceTests
             Subject = "Will Fail",
             Message = "This will fail",
             Channel = "Email",
-            Type = "custom"
+            Type = "custom",
         };
 
         NotifyLog? createdLog = null;
-        _logRepoMock.Setup(r => r.AddAsync(It.IsAny<NotifyLog>()))
+        _logRepoMock
+            .Setup(r => r.AddAsync(It.IsAny<NotifyLog>()))
             .Callback<NotifyLog>(l => createdLog = l)
             .ReturnsAsync((NotifyLog l) => l);
 
-        // Setup email to fail for this test
-        _emailServiceMock.Setup(e => e.SendSimpleEmailAsync(
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<string>(),
-                It.IsAny<string>()))
+        _emailServiceMock
+            .Setup(e =>
+                e.SendSimpleEmailAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>()
+                )
+            )
             .ReturnsAsync(false);
 
-        _logRepoMock.Setup(r => r.UpdateAsync(It.IsAny<NotifyLog>()))
-            .Returns(Task.CompletedTask);
+        _logRepoMock.Setup(r => r.UpdateAsync(It.IsAny<NotifyLog>())).Returns(Task.CompletedTask);
 
         var result = await _notifyLogService.CreateAsync(dto);
         Assert.True(result.IsSuccess);
-        Assert.Equal("Failed", createdLog?.Status);
+
+        var finalLog = await InvokeStateTransition(createdLog!);
+
+        Assert.Equal("Failed", finalLog.Status);
     }
+
     #endregion
+
 
     #region RetryAsync Tests
 
@@ -221,17 +291,21 @@ public class NotifyLogServiceTests
             Channel = "Email",
             Status = "Failed",
             Subject = "Retry Subject",
-            Payload = "Retry Message"
+            Payload = "Retry Message",
         };
 
         _logRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(log);
         // ✅ Include optional 'from' parameter
-        _emailServiceMock.Setup(e => e.SendSimpleEmailAsync(
-        It.IsAny<string>(),
-        It.IsAny<string>(),
-        It.IsAny<string>(),
-        It.IsAny<string>()))
-    .ReturnsAsync(true);
+        _emailServiceMock
+            .Setup(e =>
+                e.SendSimpleEmailAsync(
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>(),
+                    It.IsAny<string>()
+                )
+            )
+            .ReturnsAsync(true);
         _logRepoMock.Setup(r => r.UpdateAsync(It.IsAny<NotifyLog>())).Returns(Task.CompletedTask);
 
         var result = await _notifyLogService.RetryAsync(1);
@@ -266,7 +340,11 @@ public class NotifyLogServiceTests
     [Fact]
     public async Task GetAllAsync_ReturnsAllLogs()
     {
-        var logs = new List<NotifyLog> { new NotifyLog { Id = 1 }, new NotifyLog { Id = 2 } };
+        var logs = new List<NotifyLog>
+        {
+            new NotifyLog { Id = 1 },
+            new NotifyLog { Id = 2 },
+        };
         _logRepoMock.Setup(r => r.GetAllAsync()).ReturnsAsync(logs);
         var result = await _notifyLogService.GetAllAsync(null);
         Assert.True(result.IsSuccess);
@@ -282,11 +360,12 @@ public class NotifyLogServiceTests
             Items = logs,
             Page = 1,
             PageSize = 10,
-            TotalCount = 1
+            TotalCount = 1,
         };
         // Use It.IsAny for the filter (optional), but this method has no optional parameters beyond that.
         // It's fine.
-        _logRepoMock.Setup(r => r.GetPaginatedAsync(1, 10, It.IsAny<Expression<Func<NotifyLog, bool>>>()))
+        _logRepoMock
+            .Setup(r => r.GetPaginatedAsync(1, 10, It.IsAny<Expression<Func<NotifyLog, bool>>>()))
             .ReturnsAsync(paginated);
         var result = await _notifyLogService.GetPaginatedAsync(1, 10);
         Assert.True(result.IsSuccess);

@@ -1,13 +1,13 @@
+using System.Linq.Expressions;
+using AestheticClinicAPI.Modules.Authentications.DTOs;
+using AestheticClinicAPI.Modules.Authentications.Services;
+using AestheticClinicAPI.Modules.Reports.DTOs;
+using AestheticClinicAPI.Modules.Reports.Models;
+using AestheticClinicAPI.Modules.Reports.Repositories;
+using AestheticClinicAPI.Modules.Reports.Services;
+using AestheticClinicAPI.Shared;
 using Moq;
 using Xunit;
-using System.Linq.Expressions;
-using AestheticClinicAPI.Shared;
-using AestheticClinicAPI.Modules.Reports.Services;
-using AestheticClinicAPI.Modules.Reports.Repositories;
-using AestheticClinicAPI.Modules.Reports.Models;
-using AestheticClinicAPI.Modules.Reports.DTOs;
-using AestheticClinicAPI.Modules.Authentications.Services;
-using AestheticClinicAPI.Modules.Authentications.DTOs;
 
 namespace AestheticClinicAPI.Tests.UnitTests.Reports;
 
@@ -24,23 +24,25 @@ public class ReportLogServiceTests
         _reportLogService = new ReportLogService(_reportRepoMock.Object, _userServiceMock.Object);
     }
 
-    private ReportLog CreateSampleReportLog(int id = 1) => new ReportLog
-    {
-        Id = id,
-        ReportName = "WeeklySales",
-        Parameters = "{\"startDate\":\"2025-01-01\"}",
-        GeneratedById = 1,
-        Insights = "Sales increased by 20%",
-        GeneratedAt = DateTime.UtcNow,
-        CreatedAt = DateTime.UtcNow
-    };
+    private ReportLog CreateSampleReportLog(int id = 1) =>
+        new ReportLog
+        {
+            Id = id,
+            ReportName = "WeeklySales",
+            Parameters = "{\"startDate\":\"2025-01-01\"}",
+            GeneratedById = 1,
+            Insights = "Sales increased by 20%",
+            GeneratedAt = DateTime.UtcNow,
+            CreatedAt = DateTime.UtcNow,
+        };
 
-    private UserResponseDto CreateSampleUserDto() => new UserResponseDto
-    {
-        Id = 1,
-        Username = "admin",
-        Email = "admin@example.com"
-    };
+    private UserResponseDto CreateSampleUserDto() =>
+        new UserResponseDto
+        {
+            Id = 1,
+            Username = "admin",
+            Email = "admin@example.com",
+        };
 
     #region GetByIdAsync Tests
 
@@ -50,7 +52,8 @@ public class ReportLogServiceTests
         // Arrange
         var log = CreateSampleReportLog(1);
         _reportRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(log);
-        _userServiceMock.Setup(u => u.GetByIdAsync(1))
+        _userServiceMock
+            .Setup(u => u.GetByIdAsync(1))
             .ReturnsAsync(ServiceResult<UserResponseDto>.Success(CreateSampleUserDto()));
 
         // Act
@@ -88,13 +91,15 @@ public class ReportLogServiceTests
         var dto = new GenerateReportDto
         {
             ReportName = "MonthlyRevenue",
-            Parameters = "{\"month\":\"March\"}"
+            Parameters = "{\"month\":\"March\"}",
         };
         ReportLog? capturedLog = null;
-        _reportRepoMock.Setup(r => r.AddAsync(It.IsAny<ReportLog>()))
+        _reportRepoMock
+            .Setup(r => r.AddAsync(It.IsAny<ReportLog>()))
             .Callback<ReportLog>(l => capturedLog = l)
             .ReturnsAsync((ReportLog l) => l);
-        _userServiceMock.Setup(u => u.GetByIdAsync(It.IsAny<int>()))
+        _userServiceMock
+            .Setup(u => u.GetByIdAsync(It.IsAny<int>()))
             .ReturnsAsync(ServiceResult<UserResponseDto>.Failure("User not found")); // not needed for this test
 
         // Act
@@ -153,7 +158,8 @@ public class ReportLogServiceTests
         // Arrange
         var logs = new List<ReportLog> { CreateSampleReportLog(1), CreateSampleReportLog(2) };
         _reportRepoMock.Setup(r => r.GetAllAsync()).ReturnsAsync(logs);
-        _userServiceMock.Setup(u => u.GetByIdAsync(It.IsAny<int>()))
+        _userServiceMock
+            .Setup(u => u.GetByIdAsync(It.IsAny<int>()))
             .ReturnsAsync(ServiceResult<UserResponseDto>.Success(CreateSampleUserDto()));
 
         // Act
@@ -170,7 +176,8 @@ public class ReportLogServiceTests
         // Arrange
         var logs = new List<ReportLog> { CreateSampleReportLog(1) };
         _reportRepoMock.Setup(r => r.GetByReportNameAsync("WeeklySales")).ReturnsAsync(logs);
-        _userServiceMock.Setup(u => u.GetByIdAsync(It.IsAny<int>()))
+        _userServiceMock
+            .Setup(u => u.GetByIdAsync(It.IsAny<int>()))
             .ReturnsAsync(ServiceResult<UserResponseDto>.Success(CreateSampleUserDto()));
 
         // Act
@@ -195,11 +202,13 @@ public class ReportLogServiceTests
             Items = logs,
             Page = 1,
             PageSize = 10,
-            TotalCount = 2
+            TotalCount = 2,
         };
-        _reportRepoMock.Setup(r => r.GetPaginatedAsync(1, 10, It.IsAny<Expression<Func<ReportLog, bool>>>()))
+        _reportRepoMock
+            .Setup(r => r.GetPaginatedAsync(1, 10, It.IsAny<Expression<Func<ReportLog, bool>>>()))
             .ReturnsAsync(paginated);
-        _userServiceMock.Setup(u => u.GetByIdAsync(It.IsAny<int>()))
+        _userServiceMock
+            .Setup(u => u.GetByIdAsync(It.IsAny<int>()))
             .ReturnsAsync(ServiceResult<UserResponseDto>.Success(CreateSampleUserDto()));
 
         // Act
@@ -216,10 +225,20 @@ public class ReportLogServiceTests
     {
         // Arrange
         Expression<Func<ReportLog, bool>>? capturedFilter = null;
-        _reportRepoMock.Setup(r => r.GetPaginatedAsync(1, 10, It.IsAny<Expression<Func<ReportLog, bool>>>()))
+        _reportRepoMock
+            .Setup(r => r.GetPaginatedAsync(1, 10, It.IsAny<Expression<Func<ReportLog, bool>>>()))
             .Callback<int, int, Expression<Func<ReportLog, bool>>>((p, ps, f) => capturedFilter = f)
-            .ReturnsAsync(new PaginatedResult<ReportLog> { Items = new List<ReportLog>(), Page = 1, PageSize = 10, TotalCount = 0 });
-        _userServiceMock.Setup(u => u.GetByIdAsync(It.IsAny<int>()))
+            .ReturnsAsync(
+                new PaginatedResult<ReportLog>
+                {
+                    Items = new List<ReportLog>(),
+                    Page = 1,
+                    PageSize = 10,
+                    TotalCount = 0,
+                }
+            );
+        _userServiceMock
+            .Setup(u => u.GetByIdAsync(It.IsAny<int>()))
             .ReturnsAsync(ServiceResult<UserResponseDto>.Success(CreateSampleUserDto()));
 
         // Act

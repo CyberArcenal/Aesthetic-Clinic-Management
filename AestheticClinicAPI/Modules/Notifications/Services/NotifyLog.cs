@@ -1,11 +1,11 @@
+using System.Linq.Expressions;
 using System.Text.Json;
-using AestheticClinicAPI.Shared;
+using AestheticClinicAPI.Modules.Notifications.Channels;
+using AestheticClinicAPI.Modules.Notifications.Constants;
 using AestheticClinicAPI.Modules.Notifications.DTOs;
 using AestheticClinicAPI.Modules.Notifications.Models;
 using AestheticClinicAPI.Modules.Notifications.Repositories;
-using AestheticClinicAPI.Modules.Notifications.Constants;
-using AestheticClinicAPI.Modules.Notifications.Channels;
-using System.Linq.Expressions;
+using AestheticClinicAPI.Shared;
 
 namespace AestheticClinicAPI.Modules.Notifications.Services
 {
@@ -22,7 +22,8 @@ namespace AestheticClinicAPI.Modules.Notifications.Services
             INotificationTemplateService templateService,
             IEmailService emailService,
             ISmsService smsService,
-            IPushService pushService)
+            IPushService pushService
+        )
         {
             _logRepo = logRepo;
             _templateService = templateService;
@@ -46,14 +47,18 @@ namespace AestheticClinicAPI.Modules.Notifications.Services
                 MessageId = log.MessageId,
                 DurationMs = log.DurationMs,
                 SentAt = log.SentAt,
-                CreatedAt = log.CreatedAt
+                CreatedAt = log.CreatedAt,
             };
         }
 
-        private async Task<string?> RenderTemplate(string templateName, Dictionary<string, string>? metadata)
+        private async Task<string?> RenderTemplate(
+            string templateName,
+            Dictionary<string, string>? metadata
+        )
         {
             var templateResult = await _templateService.GetByNameAsync(templateName);
-            if (!templateResult.IsSuccess) return null;
+            if (!templateResult.IsSuccess)
+                return null;
 
             var content = templateResult.Data!.Content;
             if (metadata != null)
@@ -63,6 +68,7 @@ namespace AestheticClinicAPI.Modules.Notifications.Services
             }
             return content;
         }
+
         private async Task<(bool success, string subject, string body)> SendEmail(NotifyLog log)
         {
             var subject = log.Subject ?? "";
@@ -73,7 +79,10 @@ namespace AestheticClinicAPI.Modules.Notifications.Services
                 var templateResult = await _templateService.GetByNameAsync(log.Type);
                 if (templateResult.IsSuccess)
                 {
-                    var metadata = log.Metadata != null ? JsonSerializer.Deserialize<Dictionary<string, string>>(log.Metadata) : null;
+                    var metadata =
+                        log.Metadata != null
+                            ? JsonSerializer.Deserialize<Dictionary<string, string>>(log.Metadata)
+                            : null;
                     subject = templateResult.Data!.Subject;
                     if (metadata != null)
                         foreach (var kv in metadata)
@@ -90,7 +99,11 @@ namespace AestheticClinicAPI.Modules.Notifications.Services
                 }
             }
 
-            var success = await _emailService.SendSimpleEmailAsync(log.RecipientEmail, subject, body);
+            var success = await _emailService.SendSimpleEmailAsync(
+                log.RecipientEmail,
+                subject,
+                body
+            );
             return (success, subject, body);
         }
 
@@ -101,7 +114,11 @@ namespace AestheticClinicAPI.Modules.Notifications.Services
 
         private async Task<bool> SendPush(NotifyLog log)
         {
-            return await _pushService.SendPushAsync(log.RecipientEmail, log.Subject ?? "Notification", log.Payload ?? "");
+            return await _pushService.SendPushAsync(
+                log.RecipientEmail,
+                log.Subject ?? "Notification",
+                log.Payload ?? ""
+            );
         }
 
         public async Task<ServiceResult<NotifyLogResponseDto>> CreateAsync(QueueNotificationDto dto)
@@ -114,16 +131,18 @@ namespace AestheticClinicAPI.Modules.Notifications.Services
                 Payload = dto.Message,
                 Type = string.IsNullOrEmpty(dto.Type) ? "custom" : dto.Type,
                 Channel = dto.Channel,
-                Status = "Queued",   // mahalaga!
+                Status = "Queued", // mahalaga!
                 Metadata = dto.Metadata != null ? JsonSerializer.Serialize(dto.Metadata) : null,
-                CreatedAt = DateTime.UtcNow
+                CreatedAt = DateTime.UtcNow,
             };
             var created = await _logRepo.AddAsync(log);
             // Hindi na tayo tumatawag ng SendEmail / SendSms dito
             return ServiceResult<NotifyLogResponseDto>.Success(MapToDto(created));
         }
 
-        public async Task<ServiceResult<IEnumerable<NotifyLogResponseDto>>> GetAllAsync(string? status = null)
+        public async Task<ServiceResult<IEnumerable<NotifyLogResponseDto>>> GetAllAsync(
+            string? status = null
+        )
         {
             IEnumerable<NotifyLog> logs;
             if (!string.IsNullOrEmpty(status))
@@ -134,14 +153,28 @@ namespace AestheticClinicAPI.Modules.Notifications.Services
             return ServiceResult<IEnumerable<NotifyLogResponseDto>>.Success(dtos);
         }
 
-        public async Task<ServiceResult<PaginatedResult<NotifyLogResponseDto>>> GetPaginatedAsync(int page, int pageSize, string? recipientEmail = null, string? status = null, string? channel = null)
+        public async Task<ServiceResult<PaginatedResult<NotifyLogResponseDto>>> GetPaginatedAsync(
+            int page,
+            int pageSize,
+            string? recipientEmail = null,
+            string? status = null,
+            string? channel = null
+        )
         {
             Expression<Func<NotifyLog, bool>>? filter = null;
-            if (!string.IsNullOrEmpty(recipientEmail) || !string.IsNullOrEmpty(status) || !string.IsNullOrEmpty(channel))
+            if (
+                !string.IsNullOrEmpty(recipientEmail)
+                || !string.IsNullOrEmpty(status)
+                || !string.IsNullOrEmpty(channel)
+            )
             {
-                filter = l => (string.IsNullOrEmpty(recipientEmail) || l.RecipientEmail.Contains(recipientEmail))
-                           && (string.IsNullOrEmpty(status) || l.Status == status)
-                           && (string.IsNullOrEmpty(channel) || l.Channel == channel);
+                filter = l =>
+                    (
+                        string.IsNullOrEmpty(recipientEmail)
+                        || l.RecipientEmail.Contains(recipientEmail)
+                    )
+                    && (string.IsNullOrEmpty(status) || l.Status == status)
+                    && (string.IsNullOrEmpty(channel) || l.Channel == channel);
             }
             var paginated = await _logRepo.GetPaginatedAsync(page, pageSize, filter);
             var dtos = paginated.Items.Select(MapToDto);
@@ -150,7 +183,7 @@ namespace AestheticClinicAPI.Modules.Notifications.Services
                 Items = dtos,
                 Page = paginated.Page,
                 PageSize = paginated.PageSize,
-                TotalCount = paginated.TotalCount
+                TotalCount = paginated.TotalCount,
             };
             return ServiceResult<PaginatedResult<NotifyLogResponseDto>>.Success(result);
         }
@@ -224,8 +257,10 @@ namespace AestheticClinicAPI.Modules.Notifications.Services
                 log.SentAt = DateTime.UtcNow;
             else
                 log.ErrorMessage = error;
-            if (!string.IsNullOrEmpty(sentSubject)) log.Subject = sentSubject;
-            if (!string.IsNullOrEmpty(sentPayload)) log.Payload = sentPayload;
+            if (!string.IsNullOrEmpty(sentSubject))
+                log.Subject = sentSubject;
+            if (!string.IsNullOrEmpty(sentPayload))
+                log.Payload = sentPayload;
 
             await _logRepo.UpdateAsync(log);
             return ServiceResult<bool>.Success(true);

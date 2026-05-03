@@ -1,12 +1,12 @@
+using System.Linq.Expressions;
+using AestheticClinicAPI.Modules.Authentications.DTOs;
+using AestheticClinicAPI.Modules.Authentications.Models;
+using AestheticClinicAPI.Modules.Authentications.Repositories;
+using AestheticClinicAPI.Modules.Authentications.Services;
+using AestheticClinicAPI.Shared;
+using BCrypt.Net;
 using Moq;
 using Xunit;
-using AestheticClinicAPI.Shared;
-using AestheticClinicAPI.Modules.Authentications.Services;
-using AestheticClinicAPI.Modules.Authentications.Repositories;
-using AestheticClinicAPI.Modules.Authentications.Models;
-using AestheticClinicAPI.Modules.Authentications.DTOs;
-using System.Linq.Expressions;
-using BCrypt.Net;
 
 namespace AestheticClinicAPI.Tests.UnitTests.Authentications;
 
@@ -15,6 +15,7 @@ public class UserServiceTests
     private readonly Mock<IUserRepository> _userRepoMock;
     private readonly Mock<IUserRoleRepository> _userRoleRepoMock;
     private readonly Mock<IRoleRepository> _roleRepoMock;
+    private readonly Mock<IPasswordResetTokenRepository> _passwordResetTokenRepoMock;
     private readonly UserService _userService;
 
     public UserServiceTests()
@@ -22,14 +23,26 @@ public class UserServiceTests
         _userRepoMock = new Mock<IUserRepository>();
         _userRoleRepoMock = new Mock<IUserRoleRepository>();
         _roleRepoMock = new Mock<IRoleRepository>();
-        _userService = new UserService(_userRepoMock.Object, _userRoleRepoMock.Object, _roleRepoMock.Object);
+        _passwordResetTokenRepoMock = new Mock<IPasswordResetTokenRepository>();
+        _userService = new UserService(
+            _userRepoMock.Object,
+            _userRoleRepoMock.Object,
+            _roleRepoMock.Object,
+            _passwordResetTokenRepoMock.Object
+        );
     }
 
     [Fact]
     public async Task GetByIdAsync_ExistingUser_ReturnsDtoWithRoles()
     {
         // Arrange
-        var user = new User { Id = 1, Username = "john", Email = "john@example.com", IsActive = true };
+        var user = new User
+        {
+            Id = 1,
+            Username = "john",
+            Email = "john@example.com",
+            IsActive = true,
+        };
         var roles = new[] { "Admin", "Staff" };
         _userRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(user);
         _userRoleRepoMock.Setup(r => r.GetUserRolesAsync(1)).ReturnsAsync(roles);
@@ -68,14 +81,23 @@ public class UserServiceTests
             Password = "Pass123",
             FullName = "New User",
             IsActive = true,
-            Roles = new[] { "Client" }
+            Roles = new[] { "Client" },
         };
-        var createdUser = new User { Id = 1, Username = dto.Username, Email = dto.Email };
+        var createdUser = new User
+        {
+            Id = 1,
+            Username = dto.Username,
+            Email = dto.Email,
+        };
         _userRepoMock.Setup(r => r.GetByUsernameAsync(dto.Username)).ReturnsAsync((User?)null);
         _userRepoMock.Setup(r => r.GetByEmailAsync(dto.Email)).ReturnsAsync((User?)null);
         _userRepoMock.Setup(r => r.AddAsync(It.IsAny<User>())).ReturnsAsync(createdUser);
-        _roleRepoMock.Setup(r => r.GetByNameAsync("Client")).ReturnsAsync(new Role { Id = 1, Name = "Client" });
-        _userRoleRepoMock.Setup(r => r.AddAsync(It.IsAny<UserRole>())).ReturnsAsync((UserRole ur) => ur);
+        _roleRepoMock
+            .Setup(r => r.GetByNameAsync("Client"))
+            .ReturnsAsync(new Role { Id = 1, Name = "Client" });
+        _userRoleRepoMock
+            .Setup(r => r.AddAsync(It.IsAny<UserRole>()))
+            .ReturnsAsync((UserRole ur) => ur);
         _userRoleRepoMock.Setup(r => r.GetUserRolesAsync(1)).ReturnsAsync(new[] { "Client" });
 
         // Act
@@ -90,8 +112,14 @@ public class UserServiceTests
     public async Task CreateAsync_DuplicateUsername_ReturnsFailure()
     {
         // Arrange
-        var dto = new CreateUserDto { Username = "existing", Email = "new@example.com", Password = "Pass" };
-        _userRepoMock.Setup(r => r.GetByUsernameAsync(dto.Username))
+        var dto = new CreateUserDto
+        {
+            Username = "existing",
+            Email = "new@example.com",
+            Password = "Pass",
+        };
+        _userRepoMock
+            .Setup(r => r.GetByUsernameAsync(dto.Username))
             .ReturnsAsync(new User { Id = 1, Username = "existing" });
 
         // Act

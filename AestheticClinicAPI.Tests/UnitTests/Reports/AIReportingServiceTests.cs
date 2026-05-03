@@ -1,9 +1,9 @@
+using AestheticClinicAPI.Data;
+using AestheticClinicAPI.Modules.Reports.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
-using AestheticClinicAPI.Data;
-using AestheticClinicAPI.Modules.Reports.Services;
 
 namespace AestheticClinicAPI.Tests.UnitTests.Reports;
 
@@ -70,12 +70,19 @@ public class AIReportingServiceTests : IDisposable
 
         // Assert
         _loggerMock.Verify(
-            x => x.Log(
-                LogLevel.Information,
-                It.IsAny<EventId>(),
-                It.Is<It.IsAnyType>((o, t) => o.ToString()!.Contains("Starting weekly AI prediction report generation")),
-                It.IsAny<Exception>(),
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-            Times.Once);
+            x =>
+                x.Log(
+                    LogLevel.Information,
+                    It.IsAny<EventId>(),
+                    It.Is<It.IsAnyType>(
+                        (o, t) =>
+                            o.ToString()!
+                                .Contains("Starting weekly AI prediction report generation")
+                    ),
+                    It.IsAny<Exception>(),
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()
+                ),
+            Times.Once
+        );
     }
 }

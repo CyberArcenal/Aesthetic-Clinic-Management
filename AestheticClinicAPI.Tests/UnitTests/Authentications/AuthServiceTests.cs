@@ -1,12 +1,15 @@
+using AestheticClinicAPI.Modules.Authentications.DTOs;
+using AestheticClinicAPI.Modules.Authentications.Models;
+using AestheticClinicAPI.Modules.Authentications.Repositories;
+using AestheticClinicAPI.Modules.Authentications.Services;
+using AestheticClinicAPI.Modules.Notifications.Services;
+using AestheticClinicAPI.Modules.Staff.StateTransitionService;
+using AestheticClinicAPI.Shared;
+using BCrypt.Net;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
-using AestheticClinicAPI.Shared;
-using AestheticClinicAPI.Modules.Authentications.Services;
-using AestheticClinicAPI.Modules.Authentications.Repositories;
-using AestheticClinicAPI.Modules.Authentications.Models;
-using AestheticClinicAPI.Modules.Authentications.DTOs;
-using Microsoft.Extensions.Configuration;
-using BCrypt.Net;
 
 namespace AestheticClinicAPI.Tests.UnitTests.Authentications;
 
@@ -17,6 +20,10 @@ public class AuthServiceTests
     private readonly Mock<IRoleRepository> _roleRepoMock;
     private readonly Mock<IRefreshTokenRepository> _refreshTokenRepoMock;
     private readonly Mock<IConfiguration> _configMock;
+    private readonly Mock<IPasswordResetTokenRepository> _passwordResetTokenRepoMock;
+    private readonly Mock<ILogger<StaffMemberStateTransition>> _loggerMock;
+    private readonly Mock<IUserService> _userServiceMock;
+    private readonly Mock<INotifyLogService> _notifyLogServiceMock;
     private readonly AuthService _authService;
 
     public AuthServiceTests()
@@ -26,34 +33,50 @@ public class AuthServiceTests
         _roleRepoMock = new Mock<IRoleRepository>();
         _refreshTokenRepoMock = new Mock<IRefreshTokenRepository>();
         _configMock = new Mock<IConfiguration>();
+        _passwordResetTokenRepoMock = new Mock<IPasswordResetTokenRepository>();
+        _loggerMock = new Mock<ILogger<StaffMemberStateTransition>>();
+        _userServiceMock = new Mock<IUserService>();
+        _notifyLogServiceMock = new Mock<INotifyLogService>();
 
         // Setup JWT configuration
-        _configMock.Setup(c => c["Jwt:Key"]).Returns("test-key-that-is-at-least-32-characters-long");
+        _configMock
+            .Setup(c => c["Jwt:Key"])
+            .Returns("test-key-that-is-at-least-32-characters-long");
         _configMock.Setup(c => c["Jwt:Issuer"]).Returns("TestIssuer");
         _configMock.Setup(c => c["Jwt:Audience"]).Returns("TestAudience");
         _configMock.Setup(c => c["Jwt:ExpiryMinutes"]).Returns("60");
 
         _authService = new AuthService(
+            _loggerMock.Object,
             _userRepoMock.Object,
             _userRoleRepoMock.Object,
             _roleRepoMock.Object,
             _refreshTokenRepoMock.Object,
-            _configMock.Object);
+            _configMock.Object,
+            _userServiceMock.Object,
+            _notifyLogServiceMock.Object
+        );
 
         var jwtSettingsMock = new Mock<IConfigurationSection>();
-        jwtSettingsMock.Setup(x => x["Key"]).Returns("test-key-that-is-at-least-32-characters-long");
+        jwtSettingsMock
+            .Setup(x => x["Key"])
+            .Returns("test-key-that-is-at-least-32-characters-long");
         jwtSettingsMock.Setup(x => x["Issuer"]).Returns("TestIssuer");
         jwtSettingsMock.Setup(x => x["Audience"]).Returns("TestAudience");
         jwtSettingsMock.Setup(x => x["ExpiryMinutes"]).Returns("60");
 
         _configMock.Setup(c => c.GetSection("Jwt")).Returns(jwtSettingsMock.Object);
-        _configMock.Setup(c => c["Jwt:Key"]).Returns("test-key-that-is-at-least-32-characters-long");
+        _configMock
+            .Setup(c => c["Jwt:Key"])
+            .Returns("test-key-that-is-at-least-32-characters-long");
         _configMock.Setup(c => c["Jwt:Issuer"]).Returns("TestIssuer");
         _configMock.Setup(c => c["Jwt:Audience"]).Returns("TestAudience");
         _configMock.Setup(c => c["Jwt:ExpiryMinutes"]).Returns("60");
 
         // Also ensure these top-level indexers work for direct access
-        _configMock.Setup(c => c["Jwt:Key"]).Returns("test-key-that-is-at-least-32-characters-long");
+        _configMock
+            .Setup(c => c["Jwt:Key"])
+            .Returns("test-key-that-is-at-least-32-characters-long");
         _configMock.Setup(c => c["Jwt:Issuer"]).Returns("TestIssuer");
         _configMock.Setup(c => c["Jwt:Audience"]).Returns("TestAudience");
         _configMock.Setup(c => c["Jwt:ExpiryMinutes"]).Returns("60");
@@ -70,20 +93,23 @@ public class AuthServiceTests
             Username = "newuser",
             Email = "new@example.com",
             Password = "Password123",
-            FullName = "New User"
+            FullName = "New User",
         };
 
         _userRepoMock.Setup(r => r.GetByUsernameAsync(dto.Username)).ReturnsAsync((User?)null);
         _userRepoMock.Setup(r => r.GetByEmailAsync(dto.Email)).ReturnsAsync((User?)null);
-        _userRepoMock.Setup(r => r.AddAsync(It.IsAny<User>()))
-            .ReturnsAsync((User u) => u);
-        _roleRepoMock.Setup(r => r.GetByNameAsync("Client"))
+        _userRepoMock.Setup(r => r.AddAsync(It.IsAny<User>())).ReturnsAsync((User u) => u);
+        _roleRepoMock
+            .Setup(r => r.GetByNameAsync("Client"))
             .ReturnsAsync(new Role { Id = 1, Name = "Client" });
-        _userRoleRepoMock.Setup(r => r.AddAsync(It.IsAny<UserRole>()))
+        _userRoleRepoMock
+            .Setup(r => r.AddAsync(It.IsAny<UserRole>()))
             .ReturnsAsync((UserRole ur) => ur);
-        _refreshTokenRepoMock.Setup(r => r.AddAsync(It.IsAny<RefreshToken>()))
+        _refreshTokenRepoMock
+            .Setup(r => r.AddAsync(It.IsAny<RefreshToken>()))
             .ReturnsAsync((RefreshToken rt) => rt);
-        _userRoleRepoMock.Setup(r => r.GetUserRolesAsync(It.IsAny<int>()))
+        _userRoleRepoMock
+            .Setup(r => r.GetUserRolesAsync(It.IsAny<int>()))
             .ReturnsAsync(new[] { "Client" });
 
         // Act
@@ -102,8 +128,14 @@ public class AuthServiceTests
     public async Task RegisterAsync_UsernameExists_ReturnsFailure()
     {
         // Arrange
-        var dto = new RegisterDto { Username = "existing", Email = "new@example.com", Password = "Pass123" };
-        _userRepoMock.Setup(r => r.GetByUsernameAsync(dto.Username))
+        var dto = new RegisterDto
+        {
+            Username = "existing",
+            Email = "new@example.com",
+            Password = "Pass123",
+        };
+        _userRepoMock
+            .Setup(r => r.GetByUsernameAsync(dto.Username))
             .ReturnsAsync(new User { Id = 1, Username = "existing" });
 
         // Act
@@ -119,9 +151,15 @@ public class AuthServiceTests
     public async Task RegisterAsync_EmailExists_ReturnsFailure()
     {
         // Arrange
-        var dto = new RegisterDto { Username = "newuser", Email = "existing@example.com", Password = "Pass123" };
+        var dto = new RegisterDto
+        {
+            Username = "newuser",
+            Email = "existing@example.com",
+            Password = "Pass123",
+        };
         _userRepoMock.Setup(r => r.GetByUsernameAsync(dto.Username)).ReturnsAsync((User?)null);
-        _userRepoMock.Setup(r => r.GetByEmailAsync(dto.Email))
+        _userRepoMock
+            .Setup(r => r.GetByEmailAsync(dto.Email))
             .ReturnsAsync(new User { Id = 1, Email = "existing@example.com" });
 
         // Act
@@ -148,15 +186,18 @@ public class AuthServiceTests
             Username = "testuser",
             Email = "test@example.com",
             PasswordHash = hashedPassword,
-            IsActive = true
+            IsActive = true,
         };
         var dto = new LoginDto { UsernameOrEmail = "testuser", Password = password };
 
         _userRepoMock.Setup(r => r.GetByUsernameAsync(dto.UsernameOrEmail)).ReturnsAsync(user);
         _userRepoMock.Setup(r => r.UpdateAsync(It.IsAny<User>())).Returns(Task.CompletedTask);
-        _refreshTokenRepoMock.Setup(r => r.RevokeAllForUserAsync(user.Id)).Returns(Task.CompletedTask);
+        _refreshTokenRepoMock
+            .Setup(r => r.RevokeAllForUserAsync(user.Id))
+            .Returns(Task.CompletedTask);
         _userRoleRepoMock.Setup(r => r.GetUserRolesAsync(user.Id)).ReturnsAsync(new[] { "Client" });
-        _refreshTokenRepoMock.Setup(r => r.AddAsync(It.IsAny<RefreshToken>()))
+        _refreshTokenRepoMock
+            .Setup(r => r.AddAsync(It.IsAny<RefreshToken>()))
             .ReturnsAsync((RefreshToken rt) => rt);
 
         // Act
@@ -179,7 +220,7 @@ public class AuthServiceTests
             Id = 1,
             Username = "testuser",
             PasswordHash = BCrypt.Net.BCrypt.HashPassword("CorrectPass123"),
-            IsActive = true
+            IsActive = true,
         };
         var dto = new LoginDto { UsernameOrEmail = "testuser", Password = "WrongPass" };
         _userRepoMock.Setup(r => r.GetByUsernameAsync(dto.UsernameOrEmail)).ReturnsAsync(user);
@@ -197,7 +238,9 @@ public class AuthServiceTests
     {
         // Arrange
         var dto = new LoginDto { UsernameOrEmail = "nonexistent", Password = "pass" };
-        _userRepoMock.Setup(r => r.GetByUsernameAsync(dto.UsernameOrEmail)).ReturnsAsync((User?)null);
+        _userRepoMock
+            .Setup(r => r.GetByUsernameAsync(dto.UsernameOrEmail))
+            .ReturnsAsync((User?)null);
         _userRepoMock.Setup(r => r.GetByEmailAsync(dto.UsernameOrEmail)).ReturnsAsync((User?)null);
 
         // Act
@@ -217,7 +260,7 @@ public class AuthServiceTests
             Id = 1,
             Username = "inactive",
             PasswordHash = BCrypt.Net.BCrypt.HashPassword("Pass123"),
-            IsActive = false
+            IsActive = false,
         };
         var dto = new LoginDto { UsernameOrEmail = "inactive", Password = "Pass123" };
         _userRepoMock.Setup(r => r.GetByUsernameAsync(dto.UsernameOrEmail)).ReturnsAsync(user);
@@ -245,21 +288,22 @@ public class AuthServiceTests
             UserId = 1,
             Token = refreshToken,
             ExpiryDate = DateTime.UtcNow.AddDays(1),
-            IsRevoked = false
+            IsRevoked = false,
         };
         var user = new User
         {
             Id = 1,
             Username = "testuser",
             Email = "test@example.com",
-            IsActive = true
+            IsActive = true,
         };
 
         _refreshTokenRepoMock.Setup(r => r.GetByTokenAsync(refreshToken)).ReturnsAsync(tokenEntity);
         _userRepoMock.Setup(r => r.GetByIdAsync(1)).ReturnsAsync(user);
         _refreshTokenRepoMock.Setup(r => r.UpdateAsync(tokenEntity)).Returns(Task.CompletedTask);
         _userRoleRepoMock.Setup(r => r.GetUserRolesAsync(user.Id)).ReturnsAsync(new[] { "Client" });
-        _refreshTokenRepoMock.Setup(r => r.AddAsync(It.IsAny<RefreshToken>()))
+        _refreshTokenRepoMock
+            .Setup(r => r.AddAsync(It.IsAny<RefreshToken>()))
             .ReturnsAsync((RefreshToken rt) => rt);
 
         // Act
@@ -283,7 +327,7 @@ public class AuthServiceTests
             Id = 1,
             Token = refreshToken,
             ExpiryDate = DateTime.UtcNow.AddDays(-1),
-            IsRevoked = false
+            IsRevoked = false,
         };
         _refreshTokenRepoMock.Setup(r => r.GetByTokenAsync(refreshToken)).ReturnsAsync(tokenEntity);
 
@@ -305,7 +349,7 @@ public class AuthServiceTests
             Id = 1,
             Token = refreshToken,
             ExpiryDate = DateTime.UtcNow.AddDays(1),
-            IsRevoked = true
+            IsRevoked = true,
         };
         _refreshTokenRepoMock.Setup(r => r.GetByTokenAsync(refreshToken)).ReturnsAsync(tokenEntity);
 
@@ -326,7 +370,9 @@ public class AuthServiceTests
     {
         // Arrange
         var userId = 1;
-        _refreshTokenRepoMock.Setup(r => r.RevokeAllForUserAsync(userId)).Returns(Task.CompletedTask);
+        _refreshTokenRepoMock
+            .Setup(r => r.RevokeAllForUserAsync(userId))
+            .Returns(Task.CompletedTask);
 
         // Act
         var result = await _authService.LogoutAsync(userId);
@@ -350,11 +396,13 @@ public class AuthServiceTests
         var user = new User
         {
             Id = userId,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword(currentPassword)
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(currentPassword),
         };
         _userRepoMock.Setup(r => r.GetByIdAsync(userId)).ReturnsAsync(user);
         _userRepoMock.Setup(r => r.UpdateAsync(It.IsAny<User>())).Returns(Task.CompletedTask);
-        _refreshTokenRepoMock.Setup(r => r.RevokeAllForUserAsync(userId)).Returns(Task.CompletedTask);
+        _refreshTokenRepoMock
+            .Setup(r => r.RevokeAllForUserAsync(userId))
+            .Returns(Task.CompletedTask);
 
         // Act
         var result = await _authService.ChangePasswordAsync(userId, currentPassword, newPassword);
@@ -373,7 +421,7 @@ public class AuthServiceTests
         var user = new User
         {
             Id = userId,
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("CorrectPass")
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("CorrectPass"),
         };
         _userRepoMock.Setup(r => r.GetByIdAsync(userId)).ReturnsAsync(user);
 
@@ -413,7 +461,7 @@ public class AuthServiceTests
             Id = userId,
             Username = "testuser",
             Email = "test@example.com",
-            FullName = "Test User"
+            FullName = "Test User",
         };
         _userRepoMock.Setup(r => r.GetByIdAsync(userId)).ReturnsAsync(user);
         _userRoleRepoMock.Setup(r => r.GetUserRolesAsync(userId)).ReturnsAsync(new[] { "Client" });

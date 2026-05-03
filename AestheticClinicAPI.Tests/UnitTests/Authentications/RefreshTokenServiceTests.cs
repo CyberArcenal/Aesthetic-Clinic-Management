@@ -1,9 +1,9 @@
+using AestheticClinicAPI.Modules.Authentications.Models;
+using AestheticClinicAPI.Modules.Authentications.Repositories;
+using AestheticClinicAPI.Modules.Authentications.Services;
+using AestheticClinicAPI.Shared;
 using Moq;
 using Xunit;
-using AestheticClinicAPI.Shared;
-using AestheticClinicAPI.Modules.Authentications.Services;
-using AestheticClinicAPI.Modules.Authentications.Repositories;
-using AestheticClinicAPI.Modules.Authentications.Models;
 
 namespace AestheticClinicAPI.Tests.UnitTests.Authentications;
 
@@ -24,7 +24,8 @@ public class RefreshTokenServiceTests
         // Arrange
         var userId = 1;
         RefreshToken capturedToken = null;
-        _refreshTokenRepoMock.Setup(r => r.AddAsync(It.IsAny<RefreshToken>()))
+        _refreshTokenRepoMock
+            .Setup(r => r.AddAsync(It.IsAny<RefreshToken>()))
             .Callback<RefreshToken>(rt => capturedToken = rt)
             .ReturnsAsync((RefreshToken rt) => rt);
 
@@ -45,7 +46,12 @@ public class RefreshTokenServiceTests
     {
         // Arrange
         var token = "some-token";
-        var tokenEntity = new RefreshToken { Id = 1, Token = token, IsRevoked = false };
+        var tokenEntity = new RefreshToken
+        {
+            Id = 1,
+            Token = token,
+            IsRevoked = false,
+        };
         _refreshTokenRepoMock.Setup(r => r.GetByTokenAsync(token)).ReturnsAsync(tokenEntity);
         _refreshTokenRepoMock.Setup(r => r.UpdateAsync(tokenEntity)).Returns(Task.CompletedTask);
 
@@ -62,7 +68,9 @@ public class RefreshTokenServiceTests
     public async Task RevokeTokenAsync_NonExistingToken_ReturnsFailure()
     {
         // Arrange
-        _refreshTokenRepoMock.Setup(r => r.GetByTokenAsync("invalid")).ReturnsAsync((RefreshToken?)null);
+        _refreshTokenRepoMock
+            .Setup(r => r.GetByTokenAsync("invalid"))
+            .ReturnsAsync((RefreshToken?)null);
 
         // Act
         var result = await _refreshTokenService.RevokeTokenAsync("invalid");
@@ -77,7 +85,9 @@ public class RefreshTokenServiceTests
     {
         // Arrange
         var userId = 1;
-        _refreshTokenRepoMock.Setup(r => r.RevokeAllForUserAsync(userId)).Returns(Task.CompletedTask);
+        _refreshTokenRepoMock
+            .Setup(r => r.RevokeAllForUserAsync(userId))
+            .Returns(Task.CompletedTask);
 
         // Act
         var result = await _refreshTokenService.RevokeAllForUserAsync(userId);
