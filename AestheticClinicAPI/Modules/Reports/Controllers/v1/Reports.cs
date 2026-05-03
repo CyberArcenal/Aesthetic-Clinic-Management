@@ -4,7 +4,7 @@ using AestheticClinicAPI.Modules.Reports.DTOs;
 using AestheticClinicAPI.Modules.Reports.Services;
 using Microsoft.AspNetCore.Authorization;
 
-namespace AestheticClinicAPI.Modules.Reports.Controllers
+namespace AestheticClinicAPI.Modules.Reports.Controllers.v1
 {
     [ApiController]
     [Route("api/v1/reports")]

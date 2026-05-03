@@ -1,5 +1,5 @@
-using AestheticClinicAPI.Shared;
 using AestheticClinicAPI.Modules.Authentications.DTOs;
+using AestheticClinicAPI.Shared;
 
 namespace AestheticClinicAPI.Modules.Authentications.Services
 {
@@ -10,6 +10,12 @@ namespace AestheticClinicAPI.Modules.Authentications.Services
         Task<ServiceResult<AuthResponseDto>> RefreshTokenAsync(string refreshToken);
         Task<ServiceResult<bool>> LogoutAsync(int userId);
         Task<ServiceResult<AuthResponseDto>> GetCurrentUserAsync(int userId);
-        Task<ServiceResult<bool>> ChangePasswordAsync(int userId, string currentPassword, string newPassword);
+        Task<ServiceResult<bool>> ChangePasswordAsync(
+            int userId,
+            string currentPassword,
+            string newPassword
+        );
+        Task<ServiceResult<bool>> ForgotPasswordAsync(string email);
+        Task<ServiceResult<bool>> ResetPasswordAsync(string token, string newPassword);
     }
 }

@@ -2,44 +2,64 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using Microsoft.Extensions.Configuration;
-using Microsoft.IdentityModel.Tokens;
-using AestheticClinicAPI.Shared;
 using AestheticClinicAPI.Modules.Authentications.DTOs;
 using AestheticClinicAPI.Modules.Authentications.Models;
 using AestheticClinicAPI.Modules.Authentications.Repositories;
+using AestheticClinicAPI.Modules.Notifications.DTOs;
+using AestheticClinicAPI.Modules.Notifications.Services;
+using AestheticClinicAPI.Modules.Staff.StateTransitionService;
+using AestheticClinicAPI.Shared;
+using Microsoft.Extensions.Configuration;
+using Microsoft.IdentityModel.Tokens;
 
 namespace AestheticClinicAPI.Modules.Authentications.Services
 {
     public class AuthService : IAuthService
     {
+        private readonly ILogger<StaffMemberStateTransition> _logger;
         private readonly IUserRepository _userRepo;
         private readonly IUserRoleRepository _userRoleRepo;
         private readonly IRoleRepository _roleRepo;
         private readonly IRefreshTokenRepository _refreshTokenRepo;
         private readonly IConfiguration _config;
+        private readonly IUserService _userService;
+
+        private readonly INotifyLogService _notifyLogService;
 
         public AuthService(
+            ILogger<StaffMemberStateTransition> logger,
             IUserRepository userRepo,
             IUserRoleRepository userRoleRepo,
             IRoleRepository roleRepo,
             IRefreshTokenRepository refreshTokenRepo,
-            IConfiguration config)
+            IConfiguration config,
+            IUserService userService,
+            INotifyLogService notifyLogService
+        )
         {
+            _logger = logger;
             _userRepo = userRepo;
             _userRoleRepo = userRoleRepo;
             _roleRepo = roleRepo;
             _refreshTokenRepo = refreshTokenRepo;
             _config = config;
+            _userService = userService;
+            _notifyLogService = notifyLogService;
         }
 
         private string HashPassword(string password) => BCrypt.Net.BCrypt.HashPassword(password);
-        private bool VerifyPassword(string password, string hash) => BCrypt.Net.BCrypt.Verify(password, hash);
+
+        private bool VerifyPassword(string password, string hash) =>
+            BCrypt.Net.BCrypt.Verify(password, hash);
 
         private string GenerateJwtToken(User user, IEnumerable<string> roles)
         {
             var jwtSettings = _config.GetSection("Jwt");
-            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Key"] ?? throw new InvalidOperationException("JWT Key missing")));
+            var key = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(
+                    jwtSettings["Key"] ?? throw new InvalidOperationException("JWT Key missing")
+                )
+            );
             var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
 
             var claims = new List<Claim>
@@ -47,7 +67,7 @@ namespace AestheticClinicAPI.Modules.Authentications.Services
                 new Claim(JwtRegisteredClaimNames.Sub, user.Id.ToString()),
                 new Claim(JwtRegisteredClaimNames.UniqueName, user.Username),
                 new Claim(JwtRegisteredClaimNames.Email, user.Email),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
             };
             claims.AddRange(roles.Select(r => new Claim(ClaimTypes.Role, r)));
 
@@ -55,7 +75,9 @@ namespace AestheticClinicAPI.Modules.Authentications.Services
                 issuer: jwtSettings["Issuer"],
                 audience: jwtSettings["Audience"],
                 claims: claims,
-                expires: DateTime.UtcNow.AddMinutes(double.Parse(jwtSettings["ExpiryMinutes"] ?? "60")),
+                expires: DateTime.UtcNow.AddMinutes(
+                    double.Parse(jwtSettings["ExpiryMinutes"] ?? "60")
+                ),
                 signingCredentials: creds
             );
             return new JwtSecurityTokenHandler().WriteToken(token);
@@ -76,7 +98,7 @@ namespace AestheticClinicAPI.Modules.Authentications.Services
                 UserId = userId,
                 Token = GenerateRefreshToken(),
                 ExpiryDate = DateTime.UtcNow.AddDays(7),
-                IsRevoked = false
+                IsRevoked = false,
             };
             return await _refreshTokenRepo.AddAsync(token);
         }
@@ -94,8 +116,10 @@ namespace AestheticClinicAPI.Modules.Authentications.Services
                 FullName = user.FullName,
                 Token = token,
                 RefreshToken = refreshTokenEntity.Token,
-                ExpiresAt = DateTime.UtcNow.AddMinutes(double.Parse(_config["Jwt:ExpiryMinutes"] ?? "60")),
-                Roles = roles
+                ExpiresAt = DateTime.UtcNow.AddMinutes(
+                    double.Parse(_config["Jwt:ExpiryMinutes"] ?? "60")
+                ),
+                Roles = roles,
             };
         }
 
@@ -115,7 +139,7 @@ namespace AestheticClinicAPI.Modules.Authentications.Services
                 Email = dto.Email,
                 PasswordHash = HashPassword(dto.Password),
                 FullName = dto.FullName,
-                IsActive = true
+                IsActive = true,
             };
             var created = await _userRepo.AddAsync(user);
 
@@ -123,9 +147,13 @@ namespace AestheticClinicAPI.Modules.Authentications.Services
             var clientRole = await _roleRepo.GetByNameAsync("Client");
             if (clientRole == null)
             {
-                clientRole = await _roleRepo.AddAsync(new Role { Name = "Client", Description = "Default client role" });
+                clientRole = await _roleRepo.AddAsync(
+                    new Role { Name = "Client", Description = "Default client role" }
+                );
             }
-            await _userRoleRepo.AddAsync(new UserRole { UserId = created.Id, RoleId = clientRole.Id });
+            await _userRoleRepo.AddAsync(
+                new UserRole { UserId = created.Id, RoleId = clientRole.Id }
+            );
 
             var response = await BuildAuthResponse(created);
             return ServiceResult<AuthResponseDto>.Success(response);
@@ -133,10 +161,13 @@ namespace AestheticClinicAPI.Modules.Authentications.Services
 
         public async Task<ServiceResult<AuthResponseDto>> LoginAsync(LoginDto dto)
         {
-            var user = await _userRepo.GetByUsernameAsync(dto.UsernameOrEmail) ??
-                       await _userRepo.GetByEmailAsync(dto.UsernameOrEmail);
+            var user =
+                await _userRepo.GetByUsernameAsync(dto.UsernameOrEmail)
+                ?? await _userRepo.GetByEmailAsync(dto.UsernameOrEmail);
             if (user == null || !VerifyPassword(dto.Password, user.PasswordHash))
-                return ServiceResult<AuthResponseDto>.Failure("Invalid username/email or password.");
+                return ServiceResult<AuthResponseDto>.Failure(
+                    "Invalid username/email or password."
+                );
 
             if (!user.IsActive)
                 return ServiceResult<AuthResponseDto>.Failure("Account is disabled.");
@@ -154,7 +185,11 @@ namespace AestheticClinicAPI.Modules.Authentications.Services
         public async Task<ServiceResult<AuthResponseDto>> RefreshTokenAsync(string refreshToken)
         {
             var tokenEntity = await _refreshTokenRepo.GetByTokenAsync(refreshToken);
-            if (tokenEntity == null || tokenEntity.ExpiryDate < DateTime.UtcNow || tokenEntity.IsRevoked)
+            if (
+                tokenEntity == null
+                || tokenEntity.ExpiryDate < DateTime.UtcNow
+                || tokenEntity.IsRevoked
+            )
                 return ServiceResult<AuthResponseDto>.Failure("Invalid or expired refresh token.");
 
             var user = await _userRepo.GetByIdAsync(tokenEntity.UserId);
@@ -183,20 +218,28 @@ namespace AestheticClinicAPI.Modules.Authentications.Services
             var roles = await _userRoleRepo.GetUserRolesAsync(user.Id);
             var token = GenerateJwtToken(user, roles);
             // Return new token for the current user (optional)
-            return ServiceResult<AuthResponseDto>.Success(new AuthResponseDto
-            {
-                UserId = user.Id,
-                Username = user.Username,
-                Email = user.Email,
-                FullName = user.FullName,
-                Token = token,
-                RefreshToken = "",  // not needed for current user
-                ExpiresAt = DateTime.UtcNow.AddMinutes(double.Parse(_config["Jwt:ExpiryMinutes"] ?? "60")),
-                Roles = roles
-            });
+            return ServiceResult<AuthResponseDto>.Success(
+                new AuthResponseDto
+                {
+                    UserId = user.Id,
+                    Username = user.Username,
+                    Email = user.Email,
+                    FullName = user.FullName,
+                    Token = token,
+                    RefreshToken = "", // not needed for current user
+                    ExpiresAt = DateTime.UtcNow.AddMinutes(
+                        double.Parse(_config["Jwt:ExpiryMinutes"] ?? "60")
+                    ),
+                    Roles = roles,
+                }
+            );
         }
 
-        public async Task<ServiceResult<bool>> ChangePasswordAsync(int userId, string currentPassword, string newPassword)
+        public async Task<ServiceResult<bool>> ChangePasswordAsync(
+            int userId,
+            string currentPassword,
+            string newPassword
+        )
         {
             var user = await _userRepo.GetByIdAsync(userId);
             if (user == null)
@@ -208,6 +251,59 @@ namespace AestheticClinicAPI.Modules.Authentications.Services
             await _userRepo.UpdateAsync(user);
             // Optionally revoke all refresh tokens after password change
             await _refreshTokenRepo.RevokeAllForUserAsync(userId);
+            return ServiceResult<bool>.Success(true);
+        }
+
+        public async Task<ServiceResult<bool>> ForgotPasswordAsync(string email)
+        {
+            // Find user by email
+            var paginated = await _userService.GetPaginatedAsync(1, 1, email);
+            var user =
+                paginated.IsSuccess && paginated.Data?.Items?.Any() == true
+                    ? paginated.Data.Items.First()
+                    : null;
+
+            if (user == null)
+            {
+                // For security, don't reveal if email exists
+                return ServiceResult<bool>.Success(true);
+            }
+
+            var tokenResult = await _userService.GeneratePasswordResetTokenAsync(user.Id);
+            if (!tokenResult.IsSuccess)
+                return ServiceResult<bool>.Failure(tokenResult.ErrorMessage!);
+
+            var resetLink =
+                $"{_config["Frontend:BaseUrl"]}/reset-password?token={tokenResult.Data}&email={email}";
+
+            // Send email (you need an email service here)
+            // For now, we'll assume you have IEmailService or INotifyLogService injected
+            // Example using INotifyLogService (if available)
+            // await _notifyLogService.CreateAsync(...);
+
+            await _notifyLogService.CreateAsync(
+                new QueueNotificationDto
+                {
+                    Recipient = email,
+                    Channel = "Email",
+                    Type = "PasswordReset", // create this template in seeder
+                    Metadata = new Dictionary<string, string>
+                    {
+                        { "ResetLink", resetLink },
+                        { "ClientName", user.FullName ?? user.Username },
+                    },
+                }
+            );
+
+            _logger.LogInformation("Password reset token generated for user {UserId}", user.Id);
+            return ServiceResult<bool>.Success(true);
+        }
+
+        public async Task<ServiceResult<bool>> ResetPasswordAsync(string token, string newPassword)
+        {
+            var result = await _userService.ResetPasswordAsync(token, newPassword);
+            if (!result.IsSuccess)
+                return ServiceResult<bool>.Failure(result.ErrorMessage!);
             return ServiceResult<bool>.Success(true);
         }
     }

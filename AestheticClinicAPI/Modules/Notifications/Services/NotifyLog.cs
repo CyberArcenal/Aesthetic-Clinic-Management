@@ -106,7 +106,7 @@ namespace AestheticClinicAPI.Modules.Notifications.Services
 
         public async Task<ServiceResult<NotifyLogResponseDto>> CreateAsync(QueueNotificationDto dto)
         {
-            // Create log entry
+            // Lumikha ng log entry na may status "Queued"
             var log = new NotifyLog
             {
                 RecipientEmail = dto.Recipient,
@@ -114,62 +114,12 @@ namespace AestheticClinicAPI.Modules.Notifications.Services
                 Payload = dto.Message,
                 Type = string.IsNullOrEmpty(dto.Type) ? "custom" : dto.Type,
                 Channel = dto.Channel,
-                Status = "Queued",
+                Status = "Queued",   // mahalaga!
                 Metadata = dto.Metadata != null ? JsonSerializer.Serialize(dto.Metadata) : null,
                 CreatedAt = DateTime.UtcNow
             };
             var created = await _logRepo.AddAsync(log);
-
-            // Perform sending
-            var startTime = DateTime.UtcNow;
-            bool success = false;
-            string? error = null;
-            string sentSubject = log.Subject ?? "";
-            string sentPayload = log.Payload ?? "";
-
-            try
-            {
-                switch (log.Channel.ToLower())
-                {
-                    case "email":
-                        var emailResult = await SendEmail(log);
-                        success = emailResult.success;
-                        sentSubject = emailResult.subject;
-                        sentPayload = emailResult.body;
-                        break;
-                    case "sms":
-                        success = await SendSms(log);
-                        sentPayload = log.Payload ?? "";
-                        break;
-                    case "push":
-                        success = await SendPush(log);
-                        sentPayload = log.Payload ?? "";
-                        break;
-                    default:
-                        error = $"Unknown channel '{log.Channel}'";
-                        success = false;
-                        break;
-                }
-            }
-            catch (Exception ex)
-            {
-                error = ex.Message;
-                success = false;
-            }
-
-            var durationMs = (int)(DateTime.UtcNow - startTime).TotalMilliseconds;
-
-            // Update log
-            created.Status = success ? "Sent" : "Failed";
-            created.DurationMs = durationMs;
-            if (success)
-                created.SentAt = DateTime.UtcNow;
-            else
-                created.ErrorMessage = error;
-            if (!string.IsNullOrEmpty(sentSubject)) created.Subject = sentSubject;
-            if (!string.IsNullOrEmpty(sentPayload)) created.Payload = sentPayload;
-
-            await _logRepo.UpdateAsync(created);
+            // Hindi na tayo tumatawag ng SendEmail / SendSms dito
             return ServiceResult<NotifyLogResponseDto>.Success(MapToDto(created));
         }
 

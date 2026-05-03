@@ -1,9 +1,9 @@
-using Microsoft.AspNetCore.Mvc;
-using AestheticClinicAPI.Shared;
 using AestheticClinicAPI.Modules.Notifications.DTOs;
 using AestheticClinicAPI.Modules.Notifications.Services;
+using AestheticClinicAPI.Shared;
+using Microsoft.AspNetCore.Mvc;
 
-namespace AestheticClinicAPI.Modules.Notifications.Controllers
+namespace AestheticClinicAPI.Modules.Notifications.Controllers.v1
 {
     [ApiController]
     [Route("api/v1/notifications")]
@@ -17,14 +17,18 @@ namespace AestheticClinicAPI.Modules.Notifications.Controllers
         }
 
         [HttpGet("user/{userId}")]
-        public async Task<ActionResult<ApiResponse<IEnumerable<NotificationResponseDto>>>> GetByUser(int userId, [FromQuery] int limit = 20)
+        public async Task<
+            ActionResult<ApiResponse<IEnumerable<NotificationResponseDto>>>
+        > GetByUser(int userId, [FromQuery] int limit = 20)
         {
             var result = await _notificationService.GetByUserAsync(userId, limit);
             return Ok(ApiResponse<IEnumerable<NotificationResponseDto>>.Ok(result.Data!));
         }
 
         [HttpGet("user/{userId}/unread")]
-        public async Task<ActionResult<ApiResponse<IEnumerable<NotificationResponseDto>>>> GetUnreadByUser(int userId)
+        public async Task<
+            ActionResult<ApiResponse<IEnumerable<NotificationResponseDto>>>
+        > GetUnreadByUser(int userId)
         {
             var result = await _notificationService.GetUnreadByUserAsync(userId);
             return Ok(ApiResponse<IEnumerable<NotificationResponseDto>>.Ok(result.Data!));
@@ -41,7 +45,8 @@ namespace AestheticClinicAPI.Modules.Notifications.Controllers
         public async Task<ActionResult<ApiResponse<bool>>> MarkAsRead(int id)
         {
             var result = await _notificationService.MarkAsReadAsync(id);
-            if (!result.IsSuccess) return NotFound(ApiResponse<bool>.Fail(result.ErrorMessage!));
+            if (!result.IsSuccess)
+                return NotFound(ApiResponse<bool>.Fail(result.ErrorMessage!));
             return Ok(ApiResponse<bool>.Ok(true, "Marked as read."));
         }
 
@@ -56,7 +61,8 @@ namespace AestheticClinicAPI.Modules.Notifications.Controllers
         public async Task<ActionResult<ApiResponse<bool>>> Delete(int id)
         {
             var result = await _notificationService.DeleteAsync(id);
-            if (!result.IsSuccess) return NotFound(ApiResponse<bool>.Fail(result.ErrorMessage!));
+            if (!result.IsSuccess)
+                return NotFound(ApiResponse<bool>.Fail(result.ErrorMessage!));
             return Ok(ApiResponse<bool>.Ok(true, "Notification deleted."));
         }
     }

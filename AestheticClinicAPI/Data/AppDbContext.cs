@@ -1,4 +1,3 @@
-using Microsoft.EntityFrameworkCore;
 using AestheticClinicAPI.Modules.Appointments.Models;
 using AestheticClinicAPI.Modules.Authentications.Models;
 using AestheticClinicAPI.Modules.Billing.Models;
@@ -8,12 +7,14 @@ using AestheticClinicAPI.Modules.Photos.Models;
 using AestheticClinicAPI.Modules.Reports.Models;
 using AestheticClinicAPI.Modules.Staff.Models;
 using AestheticClinicAPI.Modules.Treatments.Models;
+using Microsoft.EntityFrameworkCore;
 
 namespace AestheticClinicAPI.Data
 {
     public class AppDbContext : DbContext
     {
-        public AppDbContext(DbContextOptions<AppDbContext> options) : base(options) { }
+        public AppDbContext(DbContextOptions<AppDbContext> options)
+            : base(options) { }
 
         // Clients
         public DbSet<Client> Clients { get; set; }
@@ -45,6 +46,7 @@ namespace AestheticClinicAPI.Data
         // Authentication
         public DbSet<User> Users { get; set; }
         public DbSet<Role> Roles { get; set; }
+        public DbSet<PasswordResetToken> PasswordResetTokens { get; set; }
         public DbSet<UserRole> UserRoles { get; set; }
         public DbSet<RefreshToken> RefreshTokens { get; set; }
 
@@ -63,6 +65,7 @@ namespace AestheticClinicAPI.Data
             modelBuilder.Entity<Photo>().HasQueryFilter(e => !e.IsDeleted);
             modelBuilder.Entity<ReportLog>().HasQueryFilter(e => !e.IsDeleted);
             modelBuilder.Entity<User>().HasQueryFilter(e => !e.IsDeleted);
+            modelBuilder.Entity<PasswordResetToken>().HasQueryFilter(e => !e.IsDeleted);
             modelBuilder.Entity<Role>().HasQueryFilter(e => !e.IsDeleted);
             modelBuilder.Entity<UserRole>().HasQueryFilter(e => !e.IsDeleted);
             modelBuilder.Entity<RefreshToken>().HasQueryFilter(e => !e.IsDeleted);

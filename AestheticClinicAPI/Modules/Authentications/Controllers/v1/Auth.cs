@@ -4,7 +4,7 @@ using AestheticClinicAPI.Shared;
 using AestheticClinicAPI.Modules.Authentications.DTOs;
 using AestheticClinicAPI.Modules.Authentications.Services;
 
-namespace AestheticClinicAPI.Modules.Authentications.Controllers
+namespace AestheticClinicAPI.Modules.Authentications.Controllers.v1
 {
     [ApiController]
     [Route("api/v1/auth")]
@@ -74,5 +74,24 @@ namespace AestheticClinicAPI.Modules.Authentications.Controllers
                 return BadRequest(ApiResponse<bool>.Fail(result.ErrorMessage!));
             return Ok(ApiResponse<bool>.Ok(true, "Password changed."));
         }
+
+        [HttpPost("forgot-password")]
+        public async Task<ActionResult<ApiResponse<bool>>> ForgotPassword([FromBody] ForgotPasswordDto dto)
+        {
+            var result = await _authService.ForgotPasswordAsync(dto.Email);
+            if (!result.IsSuccess)
+                return BadRequest(ApiResponse<bool>.Fail(result.ErrorMessage!));
+            return Ok(ApiResponse<bool>.Ok(true, "If the email exists, a reset link has been sent."));
+        }
+
+        [HttpPost("reset-password")]
+        public async Task<ActionResult<ApiResponse<bool>>> ResetPassword([FromBody] ResetPasswordDto dto)
+        {
+            var result = await _authService.ResetPasswordAsync(dto.Token, dto.NewPassword);
+            if (!result.IsSuccess)
+                return BadRequest(ApiResponse<bool>.Fail(result.ErrorMessage!));
+            return Ok(ApiResponse<bool>.Ok(true, "Password has been reset successfully."));
+        }
     }
+
 }

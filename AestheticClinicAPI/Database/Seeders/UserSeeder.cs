@@ -10,7 +10,8 @@ public static class UserSeeder
     public static async Task SeedAsync(AppDbContext context)
     {
         // Check if admin already exists
-        if (await context.Users.AnyAsync(u => u.Username == "admin")) return;
+        if (await context.Users.AnyAsync(u => u.Username == "admin"))
+            return;
 
         // Create admin user
         var adminUser = new User
@@ -20,7 +21,7 @@ public static class UserSeeder
             PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin123!"),
             FullName = "System Administrator",
             IsActive = true,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = DateTime.UtcNow,
         };
 
         await context.Users.AddAsync(adminUser);

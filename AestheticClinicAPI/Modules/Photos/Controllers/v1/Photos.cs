@@ -4,7 +4,7 @@ using AestheticClinicAPI.Shared;
 using AestheticClinicAPI.Modules.Photos.DTOs;
 using AestheticClinicAPI.Modules.Photos.Services;
 
-namespace AestheticClinicAPI.Modules.Photos.Controllers;
+namespace AestheticClinicAPI.Modules.Photos.Controllers.v1;
 
 [ApiController]
 [Route("api/v1/[controller]")]

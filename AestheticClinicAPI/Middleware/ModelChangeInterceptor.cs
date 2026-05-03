@@ -11,14 +11,14 @@ namespace AestheticClinicAPI.Middleware;
 
 public class ModelChangeInterceptor : SaveChangesInterceptor
 {
-    private readonly IServiceProvider _serviceProvider;
+    private readonly IServiceScopeFactory _scopeFactory;
     private static readonly ConcurrentDictionary<(Type, string), MethodInfo?> _methodCache = new();
     private readonly ILogger<ModelChangeInterceptor> _logger;
 
-    public ModelChangeInterceptor(IServiceProvider serviceProvider)
+    public ModelChangeInterceptor(IServiceScopeFactory scopeFactory, ILogger<ModelChangeInterceptor> logger)
     {
-        _serviceProvider = serviceProvider;
-        _logger = serviceProvider.GetRequiredService<ILogger<ModelChangeInterceptor>>();
+        _scopeFactory = scopeFactory;
+        _logger = logger;
     }
 
     public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(
@@ -52,6 +52,10 @@ public class ModelChangeInterceptor : SaveChangesInterceptor
 
         _logger.LogInformation("🔍 [INTERCEPTOR] Found {Count} entity(s) to process.", entries.Count);
 
+        // Create a scope to resolve scoped services
+        using var scope = _scopeFactory.CreateScope();
+        var serviceProvider = scope.ServiceProvider;
+
         foreach (var entry in entries)
         {
             var entity = (BaseEntity)entry.Entity;
@@ -60,7 +64,7 @@ public class ModelChangeInterceptor : SaveChangesInterceptor
                 entityType.Name, entity.Id, entry.State);
 
             var stateServiceType = typeof(IStateTransitionService<>).MakeGenericType(entityType);
-            var stateService = _serviceProvider.GetService(stateServiceType);
+            var stateService = serviceProvider.GetService(stateServiceType);
 
             if (stateService is null)
             {
@@ -121,7 +125,6 @@ public class ModelChangeInterceptor : SaveChangesInterceptor
         }
     }
 
-    // Safe version na may try-catch para hindi makaabala sa save
     private async Task InvokeMethodSafely(Type serviceType, object service, string methodName, params object?[] args)
     {
         try
@@ -141,13 +144,11 @@ public class ModelChangeInterceptor : SaveChangesInterceptor
         }
         catch (Exception ex)
         {
-            // Log but do NOT rethrow – we don't want to break the transaction
             _logger.LogError(ex, "❌ Error invoking {MethodName} on {ServiceType}. The save operation will continue but the side effect may have failed.",
                 methodName, serviceType.Name);
         }
     }
 
-    // Improved cloning using ToObject() (safer)
     private object? CloneEntity(PropertyValues originalValues, Type entityType)
     {
         try

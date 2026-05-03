@@ -1,6 +1,6 @@
-using AestheticClinicAPI.Shared;
 using AestheticClinicAPI.Modules.Authentications.DTOs;
 using AestheticClinicAPI.Modules.Authentications.Models;
+using AestheticClinicAPI.Shared;
 
 namespace AestheticClinicAPI.Modules.Authentications.Services
 {
@@ -13,6 +13,12 @@ namespace AestheticClinicAPI.Modules.Authentications.Services
         Task<ServiceResult<bool>> DeleteAsync(int id);
         Task<ServiceResult<bool>> ActivateAsync(int id, bool isActive);
         Task<ServiceResult<IEnumerable<string>>> GetUserRolesAsync(int userId);
-        Task<ServiceResult<PaginatedResult<UserResponseDto>>> GetPaginatedAsync(int page, int pageSize, string? search = null);
+        Task<ServiceResult<PaginatedResult<UserResponseDto>>> GetPaginatedAsync(
+            int page,
+            int pageSize,
+            string? search = null
+        );
+        Task<ServiceResult<string>> GeneratePasswordResetTokenAsync(int userId);
+        Task<ServiceResult<bool>> ResetPasswordAsync(string token, string newPassword);
     }
 }

@@ -1,7 +1,7 @@
-using AestheticClinicAPI.Shared;
 using AestheticClinicAPI.Modules.Authentications.DTOs;
 using AestheticClinicAPI.Modules.Authentications.Models;
 using AestheticClinicAPI.Modules.Authentications.Repositories;
+using AestheticClinicAPI.Shared;
 
 namespace AestheticClinicAPI.Modules.Authentications.Services
 {
@@ -11,7 +11,11 @@ namespace AestheticClinicAPI.Modules.Authentications.Services
         private readonly IUserRepository _userRepo;
         private readonly IRoleRepository _roleRepo;
 
-        public UserRoleService(IUserRoleRepository userRoleRepo, IUserRepository userRepo, IRoleRepository roleRepo)
+        public UserRoleService(
+            IUserRoleRepository userRoleRepo,
+            IUserRepository userRepo,
+            IRoleRepository roleRepo
+        )
         {
             _userRoleRepo = userRoleRepo;
             _userRepo = userRepo;
@@ -27,7 +31,7 @@ namespace AestheticClinicAPI.Modules.Authentications.Services
                 UserId = userRole.UserId,
                 Username = user?.Username,
                 RoleId = userRole.RoleId,
-                RoleName = role?.Name
+                RoleName = role?.Name,
             };
         }
 
@@ -40,7 +44,9 @@ namespace AestheticClinicAPI.Modules.Authentications.Services
             return ServiceResult<IEnumerable<UserRoleResponseDto>>.Success(dtos);
         }
 
-        public async Task<ServiceResult<IEnumerable<UserRoleResponseDto>>> GetByUserIdAsync(int userId)
+        public async Task<ServiceResult<IEnumerable<UserRoleResponseDto>>> GetByUserIdAsync(
+            int userId
+        )
         {
             var userRoles = await _userRoleRepo.GetByUserIdAsync(userId);
             var dtos = new List<UserRoleResponseDto>();
@@ -49,7 +55,9 @@ namespace AestheticClinicAPI.Modules.Authentications.Services
             return ServiceResult<IEnumerable<UserRoleResponseDto>>.Success(dtos);
         }
 
-        public async Task<ServiceResult<IEnumerable<UserRoleResponseDto>>> GetByRoleIdAsync(int roleId)
+        public async Task<ServiceResult<IEnumerable<UserRoleResponseDto>>> GetByRoleIdAsync(
+            int roleId
+        )
         {
             var userRoles = await _userRoleRepo.GetByRoleIdAsync(roleId);
             var dtos = new List<UserRoleResponseDto>();
@@ -61,12 +69,15 @@ namespace AestheticClinicAPI.Modules.Authentications.Services
         public async Task<ServiceResult<bool>> AssignRoleAsync(AssignRoleDto dto)
         {
             var user = await _userRepo.GetByIdAsync(dto.UserId);
-            if (user == null) return ServiceResult<bool>.Failure("User not found.");
+            if (user == null)
+                return ServiceResult<bool>.Failure("User not found.");
             var role = await _roleRepo.GetByIdAsync(dto.RoleId);
-            if (role == null) return ServiceResult<bool>.Failure("Role not found.");
+            if (role == null)
+                return ServiceResult<bool>.Failure("Role not found.");
 
             var exists = await _userRoleRepo.UserHasRoleAsync(dto.UserId, role.Name);
-            if (exists) return ServiceResult<bool>.Failure("User already has this role.");
+            if (exists)
+                return ServiceResult<bool>.Failure("User already has this role.");
 
             var userRole = new UserRole { UserId = dto.UserId, RoleId = dto.RoleId };
             await _userRoleRepo.AddAsync(userRole);
@@ -75,8 +86,9 @@ namespace AestheticClinicAPI.Modules.Authentications.Services
 
         public async Task<ServiceResult<bool>> RemoveRoleAsync(AssignRoleDto dto)
         {
-            var userRole = (await _userRoleRepo.GetByUserIdAsync(dto.UserId))
-                .FirstOrDefault(ur => ur.RoleId == dto.RoleId);
+            var userRole = (await _userRoleRepo.GetByUserIdAsync(dto.UserId)).FirstOrDefault(ur =>
+                ur.RoleId == dto.RoleId
+            );
             if (userRole == null)
                 return ServiceResult<bool>.Failure("User does not have this role.");
             await _userRoleRepo.DeleteAsync(userRole);
@@ -88,6 +100,7 @@ namespace AestheticClinicAPI.Modules.Authentications.Services
             var hasRole = await _userRoleRepo.UserHasRoleAsync(userId, roleName);
             return ServiceResult<bool>.Success(hasRole);
         }
+
         public async Task<ServiceResult<IEnumerable<string>>> GetUserRolesAsync(int userId)
         {
             var roles = await _userRoleRepo.GetUserRolesAsync(userId);

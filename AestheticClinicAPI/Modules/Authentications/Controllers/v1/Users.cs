@@ -4,7 +4,7 @@ using AestheticClinicAPI.Shared;
 using AestheticClinicAPI.Modules.Authentications.DTOs;
 using AestheticClinicAPI.Modules.Authentications.Services;
 
-namespace AestheticClinicAPI.Modules.Authentications.Controllers
+namespace AestheticClinicAPI.Modules.Authentications.Controllers.v1
 {
     [Authorize(Roles = "Admin")]
     [ApiController]

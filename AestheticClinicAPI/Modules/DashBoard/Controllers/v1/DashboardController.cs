@@ -4,7 +4,7 @@ using AestheticClinicAPI.Modules.Dashboard.Services;
 using AestheticClinicAPI.Modules.Dashboard.DTOs;
 using AestheticClinicAPI.Shared;
 
-namespace AestheticClinicAPI.Modules.Dashboard.Controllers;
+namespace AestheticClinicAPI.Modules.Dashboard.Controllers.v1;
 
 [ApiController]
 [Route("api/v1/dashboard")]

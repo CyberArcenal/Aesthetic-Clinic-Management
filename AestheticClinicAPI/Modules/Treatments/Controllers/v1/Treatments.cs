@@ -3,7 +3,7 @@ using AestheticClinicAPI.Shared;
 using AestheticClinicAPI.Modules.Treatments.DTOs;
 using AestheticClinicAPI.Modules.Treatments.Services;
 
-namespace AestheticClinicAPI.Modules.Treatments.Controllers
+namespace AestheticClinicAPI.Modules.Treatments.Controllers.v1
 {
     [ApiController]
     [Route("api/v1/[controller]")]

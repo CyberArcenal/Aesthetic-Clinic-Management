@@ -1,71 +1,62 @@
+using System.Text;
+using AestheticClinicAPI.BackgroundServices;
 using AestheticClinicAPI.Data;
-using AestheticClinicAPI.Shared;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.OpenApi.Models;
-
-// Clients
-using AestheticClinicAPI.Modules.Clients.Repositories;
-using AestheticClinicAPI.Modules.Clients.Services;
-
-// Treatments
-using AestheticClinicAPI.Modules.Treatments.Repositories;
-using AestheticClinicAPI.Modules.Treatments.Services;
-
+using AestheticClinicAPI.Database.Seeders;
+using AestheticClinicAPI.Middleware;
+using AestheticClinicAPI.Modules.Appointments.Models;
 // Appointments
 using AestheticClinicAPI.Modules.Appointments.Repositories;
 using AestheticClinicAPI.Modules.Appointments.Services;
 using AestheticClinicAPI.Modules.Appointments.StateTransitionService;
 using AestheticClinicAPI.Modules.Appointments.Subscribers;
-
-// Billing
-using AestheticClinicAPI.Modules.Billing.Repositories;
-using AestheticClinicAPI.Modules.Billing.Services;
-
-// Notifications
-using AestheticClinicAPI.Modules.Notifications.Repositories;
-using AestheticClinicAPI.Modules.Notifications.Services;
-using AestheticClinicAPI.Modules.Notifications.Channels;
-
-// Photos
-using AestheticClinicAPI.Modules.Photos.Repositories;
-using AestheticClinicAPI.Modules.Photos.Services;
-
-// Reports
-using AestheticClinicAPI.Modules.Reports.Repositories;
-using AestheticClinicAPI.Modules.Reports.Services;
-
+using AestheticClinicAPI.Modules.Authentications.Models;
 // Authentications
 using AestheticClinicAPI.Modules.Authentications.Repositories;
 using AestheticClinicAPI.Modules.Authentications.Services;
-
+using AestheticClinicAPI.Modules.Authentications.StateTransitionService;
+using AestheticClinicAPI.Modules.Billing.Models;
+// Billing
+using AestheticClinicAPI.Modules.Billing.Repositories;
+using AestheticClinicAPI.Modules.Billing.Services;
+using AestheticClinicAPI.Modules.Billing.StateTransitionService;
+using AestheticClinicAPI.Modules.Clients.Models;
+// Clients
+using AestheticClinicAPI.Modules.Clients.Repositories;
+using AestheticClinicAPI.Modules.Clients.Services;
+using AestheticClinicAPI.Modules.Dashboard.Services;
+using AestheticClinicAPI.Modules.Notifications.Channels;
+using AestheticClinicAPI.Modules.Notifications.Models;
+// Notifications
+using AestheticClinicAPI.Modules.Notifications.Repositories;
+using AestheticClinicAPI.Modules.Notifications.Services;
+using AestheticClinicAPI.Modules.Notifications.StateTransitionService;
+using AestheticClinicAPI.Modules.Photos.Models;
+// Photos
+using AestheticClinicAPI.Modules.Photos.Repositories;
+using AestheticClinicAPI.Modules.Photos.Services;
+using AestheticClinicAPI.Modules.Photos.StateTransitionService;
+using AestheticClinicAPI.Modules.Reports.Models;
+// Reports
+using AestheticClinicAPI.Modules.Reports.Repositories;
+using AestheticClinicAPI.Modules.Reports.Services;
+using AestheticClinicAPI.Modules.Reports.StateTransitionService;
+using AestheticClinicAPI.Modules.Staff.Models;
 // Staff
 using AestheticClinicAPI.Modules.Staff.Repositories;
 using AestheticClinicAPI.Modules.Staff.Services;
-using AestheticClinicAPI.Middleware;
-using AestheticClinicAPI.Modules.Appointments.Models;
-using AestheticClinicAPI.Modules.Billing.StateTransitionService;
-using AestheticClinicAPI.Modules.Billing.Models;
-using AestheticClinicAPI.Modules.Clients.Models;
-using AestheticClinicAPI.Modules.Notifications.Models;
-using AestheticClinicAPI.Modules.Notifications.StateTransitionService;
-using AestheticClinicAPI.Modules.Photos.StateTransitionService;
-using AestheticClinicAPI.Modules.Photos.Models;
-using AestheticClinicAPI.Modules.Reports.StateTransitionService;
-using AestheticClinicAPI.Modules.Reports.Models;
-using AestheticClinicAPI.Modules.Staff.Models;
 using AestheticClinicAPI.Modules.Staff.StateTransitionService;
-using AestheticClinicAPI.Modules.Treatments.StateTransitionService;
 using AestheticClinicAPI.Modules.Treatments.Models;
-using AestheticClinicAPI.Modules.Authentications.Models;
-using AestheticClinicAPI.Modules.Authentications.StateTransitionService;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using System.Text;
-using Microsoft.IdentityModel.Tokens;
-using AestheticClinicAPI.BackgroundServices;
-using AestheticClinicAPI.Modules.Dashboard.Services;
+// Treatments
+using AestheticClinicAPI.Modules.Treatments.Repositories;
+using AestheticClinicAPI.Modules.Treatments.Services;
+using AestheticClinicAPI.Modules.Treatments.StateTransitionService;
+using AestheticClinicAPI.Shared;
 using FluentValidation;
 using FluentValidation.AspNetCore;
-using AestheticClinicAPI.Database.Seeders;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -74,32 +65,42 @@ var builder = WebApplication.CreateBuilder(args);
 Log.Logger = new LoggerConfiguration()
     .ReadFrom.Configuration(builder.Configuration) // basahin mula sa appsettings.json (opsyonal)
     .Enrich.FromLogContext()
-    .WriteTo.Console()                           // console output
-    .WriteTo.File("logs/app-log-.txt",           // file output (daily rolling)
+    .WriteTo.Console() // console output
+    .WriteTo.File(
+        "logs/app-log-.txt", // file output (daily rolling)
         rollingInterval: RollingInterval.Day,
-        retainedFileCountLimit: 7,               // keep logs for 7 days
-        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
+        retainedFileCountLimit: 7, // keep logs for 7 days
+        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}"
+    )
     .CreateLogger();
 
-builder.Host.UseSerilog((context, services, config) =>
-{
-    config.ReadFrom.Configuration(context.Configuration)
-          .ReadFrom.Services(services)
-          .Enrich.FromLogContext()
-          .WriteTo.Console()
-          .WriteTo.File("logs/app-log-.txt",
-              rollingInterval: RollingInterval.Day,
-              retainedFileCountLimit: 7,
-              outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}");
-});
+builder.Host.UseSerilog(
+    (context, services, config) =>
+    {
+        config
+            .ReadFrom.Configuration(context.Configuration)
+            .ReadFrom.Services(services)
+            .Enrich.FromLogContext()
+            .WriteTo.Console()
+            .WriteTo.File(
+                "logs/app-log-.txt",
+                rollingInterval: RollingInterval.Day,
+                retainedFileCountLimit: 7,
+                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}"
+            );
+    }
+);
 
 // ========== DbContext ==========
-builder.Services.AddDbContext<AppDbContext>((sp, options) =>
-{
-    var interceptor = sp.GetRequiredService<ModelChangeInterceptor>();
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"))
-           .AddInterceptors(interceptor);
-});
+builder.Services.AddDbContext<AppDbContext>(
+    (sp, options) =>
+    {
+        var interceptor = sp.GetRequiredService<ModelChangeInterceptor>();
+        options
+            .UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection"))
+            .AddInterceptors(interceptor);
+    }
+);
 
 // ========== Generic Repository ==========
 builder.Services.AddScoped(typeof(IRepository<>), typeof(Repository<>));
@@ -147,6 +148,7 @@ builder.Services.AddScoped<IReportLogService, ReportLogService>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IRoleRepository, RoleRepository>();
 builder.Services.AddScoped<IUserRoleRepository, UserRoleRepository>();
+builder.Services.AddScoped<IPasswordResetTokenRepository, PasswordResetTokenRepository>();
 builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IRoleService, RoleService>();
@@ -169,7 +171,7 @@ builder.Services.AddScoped<IDashboardService, DashboardService>();
 builder.Services.AddSingleton<ModelChangeInterceptor>();
 
 // Palitan ang DbContext registration para isama ang interceptor
-
+builder.Services.AddMemoryCache();
 
 // ========== State Transition Services ==========
 builder.Services.AddScoped<IStateTransitionService<Appointment>, AppointmentStateTransition>();
@@ -183,7 +185,10 @@ builder.Services.AddScoped<IStateTransitionService<Client>, ClientStateTransitio
 
 // ========== Notifications Module State Transitions ==========
 builder.Services.AddScoped<IStateTransitionService<Notification>, NotificationStateTransition>();
-builder.Services.AddScoped<IStateTransitionService<NotificationTemplate>, NotificationTemplateStateTransition>();
+builder.Services.AddScoped<
+    IStateTransitionService<NotificationTemplate>,
+    NotificationTemplateStateTransition
+>();
 builder.Services.AddScoped<IStateTransitionService<NotifyLog>, NotifyLogStateTransition>();
 
 // ========== Photos Module State Transition ==========
@@ -206,30 +211,32 @@ builder.Services.AddScoped<IStateTransitionService<RefreshToken>, RefreshTokenSt
 
 // ========== JWT Authentication ==========
 var jwtSettings = builder.Configuration.GetSection("Jwt");
-var key = Encoding.UTF8.GetBytes(jwtSettings["Key"] ?? throw new InvalidOperationException("JWT Key is missing"));
+var key = Encoding.UTF8.GetBytes(
+    jwtSettings["Key"] ?? throw new InvalidOperationException("JWT Key is missing")
+);
 
-builder.Services.AddAuthentication(options =>
-{
-    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-})
-.AddJwtBearer(options =>
-{
-    options.RequireHttpsMetadata = false; // Set to true in production
-    options.SaveToken = true;
-    options.TokenValidationParameters = new TokenValidationParameters
+builder
+    .Services.AddAuthentication(options =>
     {
-        ValidateIssuer = true,
-        ValidateAudience = true,
-        ValidateLifetime = true,
-        ValidateIssuerSigningKey = true,
-        ValidIssuer = jwtSettings["Issuer"],
-        ValidAudience = jwtSettings["Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(key),
-        ClockSkew = TimeSpan.Zero
-    };
-});
-
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddJwtBearer(options =>
+    {
+        options.RequireHttpsMetadata = false; // Set to true in production
+        options.SaveToken = true;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtSettings["Issuer"],
+            ValidAudience = jwtSettings["Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(key),
+            ClockSkew = TimeSpan.Zero,
+        };
+    });
 
 // ========== AI Reporting Service ==========
 builder.Services.AddScoped<IAIReportingService, AIReportingService>();
@@ -243,25 +250,34 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new OpenApiInfo { Title = "Aesthetic Clinic API", Version = "v1" });
-    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-    {
-        Name = "Authorization",
-        Type = SecuritySchemeType.Http,
-        Scheme = "Bearer",
-        BearerFormat = "JWT",
-        In = ParameterLocation.Header,
-        Description = "Enter 'Bearer' [space] and then your token."
-    });
-    c.AddSecurityRequirement(new OpenApiSecurityRequirement
-{
-    {
+    c.AddSecurityDefinition(
+        "Bearer",
         new OpenApiSecurityScheme
         {
-            Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
-        },
-        Array.Empty<string>()
-    }
-});
+            Name = "Authorization",
+            Type = SecuritySchemeType.Http,
+            Scheme = "Bearer",
+            BearerFormat = "JWT",
+            In = ParameterLocation.Header,
+            Description = "Enter 'Bearer' [space] and then your token.",
+        }
+    );
+    c.AddSecurityRequirement(
+        new OpenApiSecurityRequirement
+        {
+            {
+                new OpenApiSecurityScheme
+                {
+                    Reference = new OpenApiReference
+                    {
+                        Type = ReferenceType.SecurityScheme,
+                        Id = "Bearer",
+                    },
+                },
+                Array.Empty<string>()
+            },
+        }
+    );
 });
 
 // ========== FluentValidation ==========
@@ -270,15 +286,15 @@ builder.Services.AddFluentValidationAutoValidation();
 
 // ========== CORS ==========
 builder.Services.AddCors(options =>
-  {
-      options.AddPolicy("AllowReactApp", policy =>
-      {
-          policy.WithOrigins("http://localhost:5173")
-                .AllowAnyHeader()
-                .AllowAnyMethod();
-      });
-  });
-
+{
+    options.AddPolicy(
+        "AllowReactApp",
+        policy =>
+        {
+            policy.WithOrigins("http://localhost:5173").AllowAnyHeader().AllowAnyMethod();
+        }
+    );
+});
 
 var app = builder.Build();
 
@@ -295,7 +311,6 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.UseMiddleware<GlobalExceptionMiddleware>();
 app.MapControllers();
-
 
 // Seed database on development startup
 if (app.Environment.IsDevelopment())

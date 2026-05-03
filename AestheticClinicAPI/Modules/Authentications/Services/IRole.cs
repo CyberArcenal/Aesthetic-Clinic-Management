@@ -1,5 +1,5 @@
-using AestheticClinicAPI.Shared;
 using AestheticClinicAPI.Modules.Authentications.DTOs;
+using AestheticClinicAPI.Shared;
 
 namespace AestheticClinicAPI.Modules.Authentications.Services
 {

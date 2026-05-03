@@ -14,44 +14,25 @@ public class NotificationStateTransition : IStateTransitionService<Notification>
 
     public Task OnCreatedAsync(Notification notification, CancellationToken ct = default)
     {
-        _logger.LogInformation("[NOTIFICATION] New notification created for RecipientId: {RecipientId}, Type: {Type}, Channel: {Channel}",
-            notification.RecipientId, notification.Type, notification.Channel);
-        
-        // TODO:
-        // - I-queue ang notification para i-send sa external provider (email/SMS/push)
-        // - Mag-create ng NotifyLog entry para sa audit trail
-        // - Kung InApp, i-store lang sa database
-        
+        _logger.LogInformation("[NOTIFICATION] New in-app notification for user {RecipientId}: {Title}", 
+            notification.RecipientId, notification.Title);
+        // In-app notifications are already saved – could trigger SignalR here.
         return Task.CompletedTask;
     }
 
     public Task OnUpdatedAsync(Notification notification, Notification? originalEntity, CancellationToken ct = default)
     {
-        _logger.LogInformation("[NOTIFICATION] Notification {Id} updated", notification.Id);
-        
-        if (originalEntity != null)
+        if (originalEntity != null && !originalEntity.IsRead && notification.IsRead)
         {
-            // Kung nagbago ang IsRead status (binasa na ng user)
-            if (originalEntity.IsRead != notification.IsRead && notification.IsRead)
-            {
-                _logger.LogInformation("   → Notification marked as read at {ReadAt}", notification.ReadAt);
-                // TODO: mag-trigger ng read receipt o analytics event
-            }
+            _logger.LogInformation("[NOTIFICATION] Notification {Id} marked as read by user {RecipientId}", 
+                notification.Id, notification.RecipientId);
         }
-        
         return Task.CompletedTask;
     }
 
-    // Walang explicit Status property ang Notification (but may IsRead na parang status)
-    // Pwedeng i-monitor ang IsRead gamit ito kung gusto, pero iiwan muna natin bilang placeholder
     public Task OnStatusChangedAsync(Notification notification, string oldStatus, string newStatus, CancellationToken ct = default)
-    {
-        _logger.LogDebug("[NOTIFICATION] OnStatusChangedAsync called but Notification has no Status field. Ignoring.");
-        return Task.CompletedTask;
-    }
+        => Task.CompletedTask;
 
     public Task OnActiveChangedAsync(Notification entity, bool oldActive, bool newActive, CancellationToken ct = default)
-    {
-        throw new NotImplementedException();
-    }
+        => Task.CompletedTask;
 }
